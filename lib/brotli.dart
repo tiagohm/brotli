@@ -1,3 +1,3 @@
 library brotli;
 
-export 'src/codec.dart';
+export 'src/decode.dart';

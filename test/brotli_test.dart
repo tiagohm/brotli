@@ -225,4 +225,12 @@ void main() {
 
     expect(output, loremIpsum);
   });
+
+  test('Alice', () {
+    final output = brotli.decodeToString(
+      File('./alice.br').readAsBytesSync(),
+    );
+
+    expect(output.contains("ALICE'S ADVENTURES IN WONDERLAND"), true);
+  });
 }

@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:brotli/src/command_lookup.dart';
 import 'package:brotli/src/dictionary.dart';
@@ -342,7 +345,6 @@ void _close(s) {
   s.runningState = 11;
 
   if (s.input != null) {
-    _closeInput(s.input);
     s.input = null;
   }
 }
@@ -2171,53 +2173,138 @@ int _readInput(
   return bytesRead;
 }
 
-int _closeInput(InputStream src) {
-  return 0;
+const brotli = BrotliCodec();
+
+/// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and decodes Brotli
+/// compressed bytes to raw bytes.
+class BrotliCodec extends Codec<List<int>, List<int>> {
+  const BrotliCodec();
+
+  /// Returns the [BrotliDecoder].
+  @override
+  Converter<List<int>, List<int>> get decoder => const BrotliDecoder();
+
+  @override
+  Converter<List<int>, List<int>> get encoder =>
+      throw UnsupportedError('Cannot encode with codec: Brotli');
+
+  /// Decodes [encoded] data to String.
+  String decodeToString(List<int> encoded) {
+    return String.fromCharCodes(decoder.convert(encoded));
+  }
 }
 
-List<int> decode(List<int> bytes) {
-  final s = State();
+/// Converts Brotli compressed bytes to raw bytes.
+class BrotliDecoder extends Converter<List<int>, List<int>> {
+  const BrotliDecoder();
 
-  _initState(s, InputStream(bytes));
+  @override
+  List<int> convert(List<int> input) {
+    final sink = _BufferSink();
 
-  var totalOutput = 0;
-  final chunks = <List<int>>[];
+    startChunkedConversion(sink)
+      ..add(input)
+      ..close();
 
-  while (true) {
-    final chunk = createInt8List(16384, 0); // ??
-
-    chunks.add(chunk);
-
-    s.output = chunk;
-    s.outputOffset = 0;
-    s.outputLength = 16384;
-    s.outputUsed = 0;
-
-    _decompress(s);
-
-    totalOutput += s.outputUsed;
-
-    if (s.outputUsed < 16384) break;
+    return sink.builder.takeBytes();
   }
 
-  _close(s);
-
-  final result = createInt8List(totalOutput, 0);
-  var offset = 0;
-
-  for (var i = 0; i < chunks.length; i++) {
-    final chunk = chunks[i];
-    final end = min(totalOutput, offset + 16384);
-    final len = end - offset;
-
-    if (len < 16384) {
-      result.setAll(offset, chunk.sublist(0, len));
-    } else {
-      result.setAll(offset, chunk);
+  @override
+  Sink<List<int>> startChunkedConversion(Sink<List<int>> sink) {
+    if (sink is! ByteConversionSink) {
+      sink = ByteConversionSink.from(sink);
     }
 
-    offset += len;
+    return _BrotliDecoderSink(sink);
+  }
+}
+
+class _BufferSink extends ByteConversionSink {
+  final builder = BytesBuilder(copy: false);
+
+  void add(List<int> chunk) {
+    builder.add(chunk);
   }
 
-  return result;
+  void addSlice(
+    List<int> chunk,
+    int start,
+    int end,
+    bool isLast,
+  ) {
+    if (chunk is Uint8List) {
+      builder.add(Uint8List.view(chunk.buffer, start, end - start));
+    } else {
+      builder.add(chunk.sublist(start, end));
+    }
+  }
+
+  void close() {
+    // nada.
+  }
+}
+
+class _BrotliDecoderSink extends ByteConversionSink {
+  final ByteConversionSink sink;
+  final State _s = State();
+  List<int> _data;
+  var _closed = false;
+
+  _BrotliDecoderSink(this.sink);
+
+  @override
+  void add(List<int> data) {
+    _data = data;
+  }
+
+  @override
+  void addSlice(
+    List<int> data,
+    int start,
+    int end,
+    bool isLast,
+  ) {
+    // nada.
+  }
+
+  @override
+  void close() {
+    if (_closed) {
+      return;
+    }
+
+    try {
+      final chunk = createInt8List(16384, 0);
+
+      _initState(_s, InputStream(_data));
+      _s.output = chunk;
+
+      while (true) {
+        _s.outputOffset = 0;
+        _s.outputLength = 16384;
+        _s.outputUsed = 0;
+
+        _decompress(_s);
+
+        final len = _s.outputUsed;
+        final isLast = len < 16384;
+
+        if (len < 16384) {
+          sink.addSlice(chunk, 0, len, isLast);
+        } else {
+          sink.add(chunk);
+        }
+
+        if (isLast) {
+          break;
+        }
+      }
+
+      _close(_s);
+    } finally {
+      _closed = true;
+    }
+
+    sink.close();
+  }
 }
