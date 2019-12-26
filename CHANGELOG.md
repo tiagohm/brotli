@@ -1,3 +1,7 @@
+## 0.2.0
+
+- Implemented startChunkedConversion method.
+
 ## 0.1.1
 
 - Added const variable to BrotliCodec class.
