@@ -32,23 +32,23 @@ void main() {
       0x02,
     ];
 
-    final output = BrotliCodec().decodeToString(input);
+    final output = brotli.decodeToString(input);
     expect(output, 'time');
   });
 
   test('Metadata', () {
     final input = [1, 11, 0, 42, 3];
-    final output = BrotliCodec().decodeToString(input);
+    final output = brotli.decodeToString(input);
     expect(output, '');
   });
 
   test('Empty', () {
     var input = [6];
-    var output = BrotliCodec().decodeToString(input);
+    var output = brotli.decodeToString(input);
     expect(output, '');
 
     input = [0x81, 1];
-    output = BrotliCodec().decodeToString(input);
+    output = brotli.decodeToString(input);
     expect(output, '');
   });
 
@@ -93,7 +93,7 @@ void main() {
       0x00,
     ];
 
-    final output = BrotliCodec().decodeToString(input);
+    final output = brotli.decodeToString(input);
     expect(output, 'aabbaaaaabab');
   });
 
@@ -127,7 +127,7 @@ void main() {
       0x00,
     ];
 
-    final output = BrotliCodec().decodeToString(input);
+    final output = brotli.decodeToString(input);
     expect(output, 'himselfself');
   });
 
@@ -194,7 +194,7 @@ void main() {
       0x00,
     ];
 
-    final output = BrotliCodec().decodeToString(input);
+    final output = brotli.decodeToString(input);
     expect(
       output,
       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
@@ -216,7 +216,7 @@ void main() {
   });
 
   test('Lorem Ipsum', () {
-    final output = BrotliCodec().decodeToString(
+    final output = brotli.decodeToString(
       File('./brotli.br').readAsBytesSync(),
     );
 

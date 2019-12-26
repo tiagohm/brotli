@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:brotli/src/decode.dart';
 
+const brotli = BrotliCodec();
+
 /// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and decodes Brotli
 /// compressed bytes to raw bytes.
 class BrotliCodec extends Codec<List<int>, List<int>> {
