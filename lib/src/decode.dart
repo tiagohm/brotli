@@ -2247,14 +2247,14 @@ class _BufferSink extends ByteConversionSink {
 class _BrotliDecoderSink extends ByteConversionSink {
   final ByteConversionSink sink;
   final State _s = State();
-  List<int> _data;
+  final _builder = BytesBuilder();
   var _closed = false;
 
   _BrotliDecoderSink(this.sink);
 
   @override
   void add(List<int> data) {
-    _data = data;
+    _builder.add(data);
   }
 
   @override
@@ -2264,7 +2264,19 @@ class _BrotliDecoderSink extends ByteConversionSink {
     int end,
     bool isLast,
   ) {
-    // nada.
+    if (_closed) {
+      return;
+    }
+
+    if (end == null) {
+      throw ArgumentError.notNull('end');
+    }
+
+    _builder.add(data.sublist(start, end));
+
+    if (isLast) {
+      close();
+    }
   }
 
   @override
@@ -2276,7 +2288,7 @@ class _BrotliDecoderSink extends ByteConversionSink {
     try {
       final chunk = createInt8List(16384, 0);
 
-      _initState(_s, InputStream(_data));
+      _initState(_s, InputStream(_builder.takeBytes()));
       _s.output = chunk;
 
       while (true) {
