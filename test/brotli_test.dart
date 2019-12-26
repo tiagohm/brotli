@@ -1,8 +1,10 @@
+import 'dart:io';
+
 import 'package:brotli/brotli.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test("Base Dictionary Words", () {
+  test('Base Dictionary Words', () {
     final input = [
       0x1b,
       0x03,
@@ -30,27 +32,27 @@ void main() {
       0x02,
     ];
 
-    final output = BrotliCodec().decode(input);
-    expect(output, "time");
+    final output = BrotliCodec().decodeToString(input);
+    expect(output, 'time');
   });
 
-  test("Metadata", () {
+  test('Metadata', () {
     final input = [1, 11, 0, 42, 3];
-    final output = BrotliCodec().decode(input);
-    expect(output, "");
+    final output = BrotliCodec().decodeToString(input);
+    expect(output, '');
   });
 
-  test("Empty", () {
+  test('Empty', () {
     var input = [6];
-    var output = BrotliCodec().decode(input);
-    expect(output, "");
+    var output = BrotliCodec().decodeToString(input);
+    expect(output, '');
 
     input = [0x81, 1];
-    output = BrotliCodec().decode(input);
-    expect(output, "");
+    output = BrotliCodec().decodeToString(input);
+    expect(output, '');
   });
 
-  test("Block Count Message", () {
+  test('Block Count Message', () {
     final input = [
       0x1b,
       0x0b,
@@ -91,11 +93,11 @@ void main() {
       0x00,
     ];
 
-    final output = BrotliCodec().decode(input);
-    expect(output, "aabbaaaaabab");
+    final output = BrotliCodec().decodeToString(input);
+    expect(output, 'aabbaaaaabab');
   });
 
-  test("Intact Distance RingBuffer", () {
+  test('Intact Distance RingBuffer', () {
     final input = [
       0x1b,
       0x0a,
@@ -125,11 +127,11 @@ void main() {
       0x00,
     ];
 
-    final output = BrotliCodec().decode(input);
-    expect(output, "himselfself");
+    final output = BrotliCodec().decodeToString(input);
+    expect(output, 'himselfself');
   });
 
-  test("Compressed Uncompressed Short Compressed Small Window", () {
+  test('Compressed Uncompressed Short Compressed Small Window', () {
     final input = [
       0x21,
       0xf4,
@@ -192,24 +194,35 @@ void main() {
       0x00,
     ];
 
-    final output = BrotliCodec().decode(input);
+    final output = BrotliCodec().decodeToString(input);
     expect(
       output,
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaabbbbbbbbbb",
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      'aaaaaaaaaaaaaabbbbbbbbbb',
     );
+  });
+
+  test('Lorem Ipsum', () {
+    final output = BrotliCodec().decodeToString(
+      File('./brotli.br').readAsBytesSync(),
+    );
+
+    const loremIpsum =
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
+
+    expect(output, loremIpsum);
   });
 }

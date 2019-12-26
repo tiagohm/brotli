@@ -15,7 +15,7 @@ List<int> createInt32List(int length, [int value]) {
 }
 
 List<int> createInt16List(int length, [int value]) {
-  // final data = Int16List(length); // Waiting "triple shift" feature!
+  // TODO: Int16 quando "triple shift" for implementado!
   final data = Uint16List(length);
   if (value != null) data.fillRange(0, data.length, value);
   return data;

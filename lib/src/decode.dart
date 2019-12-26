@@ -248,7 +248,7 @@ int _calculateDistanceAlphabetLimit(
   int ndirect,
 ) {
   if (maxDistance < ndirect + (2 << npostfix)) {
-    throw "maxDistance is too small";
+    throw 'maxDistance is too small';
   }
 
   final offset = ((maxDistance - ndirect) >> npostfix) + 4;
@@ -313,7 +313,7 @@ void _initState(
   InputStream input,
 ) {
   if (s.runningState != 0) {
-    throw "State MUST be uninitialized";
+    throw 'State MUST be uninitialized';
   }
 
   s.blockTrees = createInt32List(3091, 0);
@@ -332,7 +332,7 @@ void _initState(
 
 void _close(s) {
   if (s.runningState == 0) {
-    throw "State must be initialized";
+    throw 'State must be initialized';
   }
 
   if (s.runningState == 11) {
@@ -388,7 +388,7 @@ void _decodeMetaBlockLength(State s) {
     s.isMetadata = 1;
 
     if (_readFewBits(s, 1) != 0) {
-      throw "Corrupted reserved bit";
+      throw 'Corrupted reserved bit';
     }
 
     final sizeBytes = _readFewBits(s, 2);
@@ -407,7 +407,7 @@ void _decodeMetaBlockLength(State s) {
       final bits = _readFewBits(s, 8);
 
       if (bits == 0 && i + 1 == sizeBytes && sizeBytes > 1) {
-        throw "Exuberant nibble";
+        throw 'Exuberant nibble';
       }
 
       s.metaBlockLength |= bits << (i * 8);
@@ -423,7 +423,7 @@ void _decodeMetaBlockLength(State s) {
       final bits = _readFewBits(s, 4);
 
       if (bits == 0 && i + 1 == sizeNibbles && sizeNibbles > 4) {
-        throw "Exuberant nibble";
+        throw 'Exuberant nibble';
       }
       s.metaBlockLength |= bits << (i * 4);
     }
@@ -587,7 +587,7 @@ void _readHuffmanCodeLengths(
       final repeatDelta = repeat - oldRepeat;
 
       if (symbol + repeatDelta > numSymbols) {
-        throw "symbol + repeatDelta > numSymbols";
+        throw 'symbol + repeatDelta > numSymbols';
       }
 
       for (var i = 0; i < repeatDelta; i++) {
@@ -601,7 +601,7 @@ void _readHuffmanCodeLengths(
   }
 
   if (space != 0) {
-    throw "Unused space";
+    throw 'Unused space';
   }
 
   codeLengths.fillRange(symbol, numSymbols, 0);
@@ -614,7 +614,7 @@ void _checkDupes(
   for (var i = 0; i < length - 1; i++) {
     for (var j = i + 1; j < length; j++) {
       if (symbols[i] == symbols[j]) {
-        throw "Duplicate simple Huffman code symbol";
+        throw 'Duplicate simple Huffman code symbol';
       }
     }
   }
@@ -728,7 +728,7 @@ int _readComplexHuffmanCode(
   }
 
   if (space != 0 && numCodes != 1) {
-    throw "Corrupted Huffman code histogram";
+    throw 'Corrupted Huffman code histogram';
   }
 
   _readHuffmanCodeLengths(
@@ -848,7 +848,7 @@ int _decodeContextMap(
 
       while (reps != 0) {
         if (i >= contextMapSize) {
-          throw "Corrupted context map";
+          throw 'Corrupted context map';
         }
 
         contextMap[i] = 0;
@@ -1300,7 +1300,7 @@ void _decompress(State s) {
     switch (s.runningState) {
       case 2:
         if (s.metaBlockLength < 0) {
-          throw "Invalid metablock length";
+          throw 'Invalid metablock length';
         }
 
         _readNextMetablockHeader(s);
@@ -1488,7 +1488,7 @@ void _decompress(State s) {
                 s.rings[index] + _distanceShortCodeValueOffset[distanceCode];
 
             if (s.distance < 0) {
-              throw "Negative distance";
+              throw 'Negative distance';
             }
           } else {
             final extraBits = s.distExtraBits[distanceCode];
@@ -1530,7 +1530,7 @@ void _decompress(State s) {
         }
 
         if (s.copyLength > s.metaBlockLength) {
-          throw "Invalid backward reference";
+          throw 'Invalid backward reference';
         }
 
         s.j = 0;
@@ -1581,7 +1581,7 @@ void _decompress(State s) {
         continue;
       case 9:
         if (s.distance > 0x7FFFFFFC) {
-          throw "Invalid backward reference";
+          throw 'Invalid backward reference';
         }
 
         if (s.copyLength >= 4 && s.copyLength <= 24) {
@@ -1613,10 +1613,10 @@ void _decompress(State s) {
               continue;
             }
           } else {
-            throw "Invalid backward reference";
+            throw 'Invalid backward reference';
           }
         } else {
-          throw "Invalid backward reference";
+          throw 'Invalid backward reference';
         }
 
         s.runningState = 4;
@@ -1667,13 +1667,13 @@ void _decompress(State s) {
         s.runningState = s.nextRunningState;
         continue;
       default:
-        throw "Unexpected state ${s.runningState}";
+        throw 'Unexpected state ${s.runningState}';
     }
   }
 
   if (s.runningState == 10) {
     if (s.metaBlockLength < 0) {
-      throw "Invalid metablock length";
+      throw 'Invalid metablock length';
     }
 
     _jumpToByteBoundary(s);
@@ -1968,7 +1968,7 @@ void _doReadMoreInput(State s) {
       return;
     }
 
-    throw "No more input";
+    throw 'No more input';
   }
 
   final readOffset = s.halfOffset << 1;
@@ -2002,10 +2002,10 @@ void _checkHealth(
   }
   final byteOffset = (s.halfOffset << 1) + ((s.bitOffset + 7) >> 3) - 4;
   if (byteOffset > s.tailBytes) {
-    throw "Read after end";
+    throw 'Read after end';
   }
   if ((endOfStream != 0) && (byteOffset != s.tailBytes)) {
-    throw "Unused bytes after end";
+    throw 'Unused bytes after end';
   }
 }
 
@@ -2061,7 +2061,7 @@ void _jumpToByteBoundary(State s) {
     final paddingBits = _readFewBits(s, padding);
 
     if (paddingBits != 0) {
-      throw "Corrupted padding bits";
+      throw 'Corrupted padding bits';
     }
   }
 }
@@ -2083,7 +2083,7 @@ void _copyBytes(
   int length,
 ) {
   if ((s.bitOffset & 7) != 0) {
-    throw "Unaligned copyBytes";
+    throw 'Unaligned copyBytes';
   }
 
   while ((s.bitOffset != 32) && (length != 0)) {
@@ -2132,7 +2132,7 @@ void _copyBytes(
     final len = _readInput(s.input, data, offset, length);
 
     if (len == -1) {
-      throw "Unexpected end of input";
+      throw 'Unexpected end of input';
     }
 
     offset += len;

@@ -7,3 +7,4 @@ linter:
     one_member_abstracts: false
     type_annotate_public_apis: false
     avoid_returning_null: false
+    prefer_single_quotes: true

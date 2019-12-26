@@ -57,7 +57,8 @@ final _copyLengthNBits = [
 ];
 
 List<int> _unpackCommandLookupTable() {
-  final cmdLookup = createInt16List(2816, 0);
+  // TODO: Int16 quando "triple shift" for implementado!
+  final cmdLookup = createInt32List(2816, 0);
   var insertLengthOffsets = createInt16List(24, 0);
   var copyLengthOffsets = createInt16List(24, 0);
   copyLengthOffsets[0] = 2;

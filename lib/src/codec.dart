@@ -2,25 +2,31 @@ import 'dart:convert';
 
 import 'package:brotli/src/decode.dart';
 
-class BrotliCodec extends Encoding {
+/// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and decodes Brotli
+/// compressed bytes to raw bytes.
+class BrotliCodec extends Codec<List<int>, List<int>> {
   const BrotliCodec();
 
+  /// Returns the [BrotliDecoder].
   @override
-  Converter<List<int>, String> get decoder => const BrotliDecoder();
+  Converter<List<int>, List<int>> get decoder => const BrotliDecoder();
 
   @override
-  Converter<String, List<int>> get encoder =>
+  Converter<List<int>, List<int>> get encoder =>
       throw UnsupportedError('Cannot encode with codec: Brotli');
 
-  @override
-  String get name => 'br';
+  /// Decodes [encoded] data to String.
+  String decodeToString(List<int> encoded) {
+    return String.fromCharCodes(decoder.convert(encoded));
+  }
 }
 
-class BrotliDecoder extends Converter<List<int>, String> {
+/// Converts Brotli compressed bytes to raw bytes.
+class BrotliDecoder extends Converter<List<int>, List<int>> {
   const BrotliDecoder();
 
   @override
-  String convert(List<int> input) {
-    return String.fromCharCodes(decode(input));
+  List<int> convert(List<int> input) {
+    return decode(input);
   }
 }

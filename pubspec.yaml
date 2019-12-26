@@ -1,8 +1,7 @@
 name: brotli
-description: Brotli Decoder for Dart.
-version: 0.1.0
+description: Brotli decoder for Dart.
+version: 0.1.0+1
 homepage: https://github.com/tiagohm/brotli
-author: tiagohm <tiago.henrique.cco@gmail.com>
 
 environment:
   sdk: '>=2.6.0 <3.0.0'

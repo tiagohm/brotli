@@ -18,7 +18,7 @@ List<int> _unpackDictionaryData(
   final dict = _toUsAsciiBytes(data0 + data1);
 
   if (dict.length != dictionary.length) {
-    throw "Corrupted brotli dictionary";
+    throw 'Corrupted brotli dictionary';
   }
 
   var offset = 0;

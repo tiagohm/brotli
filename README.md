@@ -1,22 +1,27 @@
-A library for Dart developers.
+# Brotli
 
-Created from templates made available by Stagehand under a BSD-style
-[license](https://github.com/dart-lang/stagehand/blob/master/LICENSE).
+Brotli decoder for Dart.
 
-## Usage
+### Installation
 
-A simple usage example:
+In `pubspec.yaml` add the following dependency:
 
-```dart
-import 'package:brotli/brotli.dart';
-
-main() {
-  var awesome = new Awesome();
-}
+```yaml
+dependencies:
+  brotli: ^0.1.0
 ```
 
-## Features and bugs
+### Example
 
-Please file feature requests and bugs at the [issue tracker][tracker].
+```dart
+import 'dart:io';
 
-[tracker]: http://example.com/issues/replaceme
+import 'package:brotli/brotli.dart';
+
+const codec = BrotliCodec();
+
+void main() {
+  final output = codec.decodeToString(File("./brotli.br").readAsBytesSync());
+  print(output);
+}
+```
