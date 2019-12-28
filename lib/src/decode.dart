@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:brotli/src/command_lookup.dart';
 import 'package:brotli/src/dictionary.dart';
+import 'package:brotli/src/exception.dart';
 import 'package:brotli/src/input_stream.dart';
 import 'package:brotli/src/lookup.dart';
 import 'package:brotli/src/state.dart';
@@ -251,7 +252,7 @@ int _calculateDistanceAlphabetLimit(
   int ndirect,
 ) {
   if (maxDistance < ndirect + (2 << npostfix)) {
-    throw 'maxDistance is too small';
+    throw const BrotliException('maxDistance is too small');
   }
 
   final offset = ((maxDistance - ndirect) >> npostfix) + 4;
@@ -316,7 +317,7 @@ void _initState(
   InputStream input,
 ) {
   if (s.runningState != 0) {
-    throw 'State MUST be uninitialized';
+    throw const BrotliException('State MUST be uninitialized');
   }
 
   s.blockTrees = createInt32List(3091, 0);
@@ -335,7 +336,7 @@ void _initState(
 
 void _close(s) {
   if (s.runningState == 0) {
-    throw 'State must be initialized';
+    throw const BrotliException('State must be initialized');
   }
 
   if (s.runningState == 11) {
@@ -390,7 +391,7 @@ void _decodeMetaBlockLength(State s) {
     s.isMetadata = 1;
 
     if (_readFewBits(s, 1) != 0) {
-      throw 'Corrupted reserved bit';
+      throw const BrotliException('Corrupted reserved bit');
     }
 
     final sizeBytes = _readFewBits(s, 2);
@@ -409,7 +410,7 @@ void _decodeMetaBlockLength(State s) {
       final bits = _readFewBits(s, 8);
 
       if (bits == 0 && i + 1 == sizeBytes && sizeBytes > 1) {
-        throw 'Exuberant nibble';
+        throw const BrotliException('Exuberant nibble');
       }
 
       s.metaBlockLength |= bits << (i * 8);
@@ -425,7 +426,7 @@ void _decodeMetaBlockLength(State s) {
       final bits = _readFewBits(s, 4);
 
       if (bits == 0 && i + 1 == sizeNibbles && sizeNibbles > 4) {
-        throw 'Exuberant nibble';
+        throw const BrotliException('Exuberant nibble');
       }
       s.metaBlockLength |= bits << (i * 4);
     }
@@ -444,7 +445,7 @@ int _readSymbol(
   State s,
 ) {
   var offset = tableGroup[tableIdx];
-  final val = (s.accumulator >> s.bitOffset);
+  final val = s.accumulator >> s.bitOffset;
   offset += val & 0xFF;
   final bits = tableGroup[offset] >> 16;
   final sym = tableGroup[offset] & 0xFFFF;
@@ -458,7 +459,7 @@ int _readSymbol(
 
   final mask = (1 << bits) - 1;
   offset += (val & mask) >> 8;
-  s.bitOffset += ((tableGroup[offset] >> 16) + 8);
+  s.bitOffset += (tableGroup[offset] >> 16) + 8;
 
   return tableGroup[offset] & 0xFFFF;
 }
@@ -589,7 +590,7 @@ void _readHuffmanCodeLengths(
       final repeatDelta = repeat - oldRepeat;
 
       if (symbol + repeatDelta > numSymbols) {
-        throw 'symbol + repeatDelta > numSymbols';
+        throw const BrotliException('symbol + repeatDelta > numSymbols');
       }
 
       for (var i = 0; i < repeatDelta; i++) {
@@ -603,7 +604,7 @@ void _readHuffmanCodeLengths(
   }
 
   if (space != 0) {
-    throw 'Unused space';
+    throw const BrotliException('Unused space');
   }
 
   codeLengths.fillRange(symbol, numSymbols, 0);
@@ -616,7 +617,7 @@ void _checkDupes(
   for (var i = 0; i < length - 1; i++) {
     for (var j = i + 1; j < length; j++) {
       if (symbols[i] == symbols[j]) {
-        throw 'Duplicate simple Huffman code symbol';
+        throw const BrotliException('Duplicate simple Huffman code symbol');
       }
     }
   }
@@ -644,7 +645,7 @@ int _readSimpleHuffmanCode(
     final symbol = _readFewBits(s, maxBits);
 
     if (symbol >= alphabetSizeLimit) {
-      throw "Can't readHuffmanCode";
+      throw const BrotliException("Can't readHuffmanCode");
     }
 
     symbols[i] = symbol;
@@ -724,13 +725,13 @@ int _readComplexHuffmanCode(
     codeLengthCodeLengths[codeLenIdx] = v;
 
     if (v != 0) {
-      space -= (32 >> v);
+      space -= 32 >> v;
       numCodes++;
     }
   }
 
   if (space != 0 && numCodes != 1) {
-    throw 'Corrupted Huffman code histogram';
+    throw const BrotliException('Corrupted Huffman code histogram');
   }
 
   _readHuffmanCodeLengths(
@@ -850,7 +851,7 @@ int _decodeContextMap(
 
       while (reps != 0) {
         if (i >= contextMapSize) {
-          throw 'Corrupted context map';
+          throw const BrotliException('Corrupted context map');
         }
 
         contextMap[i] = 0;
@@ -858,7 +859,7 @@ int _decodeContextMap(
         reps--;
       }
     } else {
-      contextMap[i] = (code - maxRunLengthPrefix);
+      contextMap[i] = code - maxRunLengthPrefix;
       i++;
     }
   }
@@ -1032,7 +1033,7 @@ int _readMetablockPartition(
 
   s.blockTrees[2 * treeType + 1] = offset;
 
-  final blockLengthAlphabetSize = 26;
+  const blockLengthAlphabetSize = 26;
 
   offset += _readHuffmanCode(
     blockLengthAlphabetSize,
@@ -1275,18 +1276,18 @@ int _calculateFence(State s) {
 
 void _decompress(State s) {
   if (s.runningState == 0) {
-    throw "Can't decompress until initialized";
+    throw const BrotliException("Can't decompress until initialized");
   }
 
   if (s.runningState == 11) {
-    throw "Can't decompress after close";
+    throw const BrotliException("Can't decompress after close");
   }
 
   if (s.runningState == 1) {
     final windowBits = _decodeWindowBits(s);
 
     if (windowBits == -1) {
-      throw "Invalid 'windowBits' code";
+      throw const BrotliException("Invalid 'windowBits' code");
     }
 
     s.maxRingBufferSize = 1 << windowBits;
@@ -1302,7 +1303,7 @@ void _decompress(State s) {
     switch (s.runningState) {
       case 2:
         if (s.metaBlockLength < 0) {
-          throw 'Invalid metablock length';
+          throw const BrotliException('Invalid metablock length');
         }
 
         _readNextMetablockHeader(s);
@@ -1490,11 +1491,11 @@ void _decompress(State s) {
                 s.rings[index] + _distanceShortCodeValueOffset[distanceCode];
 
             if (s.distance < 0) {
-              throw 'Negative distance';
+              throw const BrotliException('Negative distance');
             }
           } else {
             final extraBits = s.distExtraBits[distanceCode];
-            var bits;
+            int bits;
 
             if (s.bitOffset + extraBits <= 32) {
               bits = _readFewBits(s, extraBits);
@@ -1504,9 +1505,9 @@ void _decompress(State s) {
                     (s.accumulator >> 16);
                 s.bitOffset -= 16;
               }
-              bits = ((extraBits <= 16)
+              bits = extraBits <= 16
                   ? _readFewBits(s, extraBits)
-                  : _readManyBits(s, extraBits));
+                  : _readManyBits(s, extraBits);
             }
 
             s.distance =
@@ -1532,7 +1533,7 @@ void _decompress(State s) {
         }
 
         if (s.copyLength > s.metaBlockLength) {
-          throw 'Invalid backward reference';
+          throw const BrotliException('Invalid backward reference');
         }
 
         s.j = 0;
@@ -1583,7 +1584,7 @@ void _decompress(State s) {
         continue;
       case 9:
         if (s.distance > 0x7FFFFFFC) {
-          throw 'Invalid backward reference';
+          throw const BrotliException('Invalid backward reference');
         }
 
         if (s.copyLength >= 4 && s.copyLength <= 24) {
@@ -1615,10 +1616,10 @@ void _decompress(State s) {
               continue;
             }
           } else {
-            throw 'Invalid backward reference';
+            throw const BrotliException('Invalid backward reference');
           }
         } else {
-          throw 'Invalid backward reference';
+          throw const BrotliException('Invalid backward reference');
         }
 
         s.runningState = 4;
@@ -1669,13 +1670,13 @@ void _decompress(State s) {
         s.runningState = s.nextRunningState;
         continue;
       default:
-        throw 'Unexpected state ${s.runningState}';
+        throw BrotliException('Unexpected state: ${s.runningState}');
     }
   }
 
   if (s.runningState == 10) {
     if (s.metaBlockLength < 0) {
-      throw 'Invalid metablock length';
+      throw const BrotliException('Invalid metablock length');
     }
 
     _jumpToByteBoundary(s);
@@ -1771,15 +1772,15 @@ int _transformDictionaryWord(
 
       if (c0 < 0x80) {
         scalar += c0;
-        dst[shiftOffset] = (scalar & 0x7F);
+        dst[shiftOffset] = scalar & 0x7F;
       } else if (c0 < 0xC0) {
       } else if (c0 < 0xE0) {
         if (len >= 2) {
           final c1 = dst[shiftOffset + 1];
 
           scalar += (c1 & 0x3F) | ((c0 & 0x1F) << 6);
-          dst[shiftOffset] = (0xC0 | ((scalar >> 6) & 0x1F));
-          dst[shiftOffset + 1] = ((c1 & 0xC0) | (scalar & 0x3F));
+          dst[shiftOffset] = 0xC0 | ((scalar >> 6) & 0x1F);
+          dst[shiftOffset + 1] = (c1 & 0xC0) | (scalar & 0x3F);
 
           step = 2;
         } else {
@@ -1792,9 +1793,9 @@ int _transformDictionaryWord(
 
           scalar += (c2 & 0x3F) | ((c1 & 0x3F) << 6) | ((c0 & 0x0F) << 12);
 
-          dst[shiftOffset] = (0xE0 | ((scalar >> 12) & 0x0F));
-          dst[shiftOffset + 1] = ((c1 & 0xC0) | ((scalar >> 6) & 0x3F));
-          dst[shiftOffset + 2] = ((c2 & 0xC0) | (scalar & 0x3F));
+          dst[shiftOffset] = 0xE0 | ((scalar >> 12) & 0x0F);
+          dst[shiftOffset + 1] = (c1 & 0xC0) | ((scalar >> 6) & 0x3F);
+          dst[shiftOffset + 2] = (c2 & 0xC0) | (scalar & 0x3F);
 
           step = 3;
         } else {
@@ -1811,10 +1812,10 @@ int _transformDictionaryWord(
               ((c1 & 0x3F) << 12) |
               ((c0 & 0x07) << 18);
 
-          dst[shiftOffset] = (0xF0 | ((scalar >> 18) & 0x07));
-          dst[shiftOffset + 1] = ((c1 & 0xC0) | ((scalar >> 12) & 0x3F));
-          dst[shiftOffset + 2] = ((c2 & 0xC0) | ((scalar >> 6) & 0x3F));
-          dst[shiftOffset + 3] = ((c3 & 0xC0) | (scalar & 0x3F));
+          dst[shiftOffset] = 0xF0 | ((scalar >> 18) & 0x07);
+          dst[shiftOffset + 1] = (c1 & 0xC0) | ((scalar >> 12) & 0x3F);
+          dst[shiftOffset + 2] = (c2 & 0xC0) | ((scalar >> 6) & 0x3F);
+          dst[shiftOffset + 3] = (c3 & 0xC0) | (scalar & 0x3F);
 
           step = 4;
         } else {
@@ -1891,13 +1892,11 @@ int _buildHuffmanTable(
   int codeLengthsSize,
 ) {
   final tableOffset = tableGroup[tableIdx];
-  int key;
   final sorted = createInt32List(codeLengthsSize, 0);
   final count = createInt32List(16, 0);
   final offset = createInt32List(16, 0);
-  int symbol;
 
-  for (symbol = 0; symbol < codeLengthsSize; symbol++) {
+  for (var symbol = 0; symbol < codeLengthsSize; symbol++) {
     count[codeLengths[symbol]]++;
   }
 
@@ -1907,7 +1906,7 @@ int _buildHuffmanTable(
     offset[len + 1] = offset[len] + count[len];
   }
 
-  for (symbol = 0; symbol < codeLengthsSize; symbol++) {
+  for (var symbol = 0; symbol < codeLengthsSize; symbol++) {
     if (codeLengths[symbol] != 0) {
       sorted[offset[codeLengths[symbol]]++] = symbol;
     }
@@ -1918,14 +1917,14 @@ int _buildHuffmanTable(
   var totalSize = tableSize;
 
   if (offset[15] == 1) {
-    for (key = 0; key < totalSize; key++) {
+    for (var key = 0; key < totalSize; key++) {
       tableGroup[tableOffset + key] = sorted[0];
     }
     return totalSize;
   }
 
-  key = 0;
-  symbol = 0;
+  var key = 0;
+  var symbol = 0;
 
   for (var len = 1, step = 2; len <= rootBits; len++, step <<= 1) {
     for (; count[len] > 0; count[len]--) {
@@ -1934,6 +1933,7 @@ int _buildHuffmanTable(
       key = _getNextKey(key, len);
     }
   }
+
   final mask = totalSize - 1;
   var low = -1;
   var currentOffset = tableOffset;
@@ -1970,7 +1970,7 @@ void _doReadMoreInput(State s) {
       return;
     }
 
-    throw 'No more input';
+    throw const BrotliException('No more input');
   }
 
   final readOffset = s.halfOffset << 1;
@@ -2004,10 +2004,10 @@ void _checkHealth(
   }
   final byteOffset = (s.halfOffset << 1) + ((s.bitOffset + 7) >> 3) - 4;
   if (byteOffset > s.tailBytes) {
-    throw 'Read after end';
+    throw const BrotliException('Read after end');
   }
   if ((endOfStream != 0) && (byteOffset != s.tailBytes)) {
-    throw 'Unused bytes after end';
+    throw const BrotliException('Unused bytes after end');
   }
 }
 
@@ -2063,7 +2063,7 @@ void _jumpToByteBoundary(State s) {
     final paddingBits = _readFewBits(s, padding);
 
     if (paddingBits != 0) {
-      throw 'Corrupted padding bits';
+      throw const BrotliException('Corrupted padding bits');
     }
   }
 }
@@ -2085,11 +2085,11 @@ void _copyBytes(
   int length,
 ) {
   if ((s.bitOffset & 7) != 0) {
-    throw 'Unaligned copyBytes';
+    throw const BrotliException('Unaligned copyBytes');
   }
 
   while ((s.bitOffset != 32) && (length != 0)) {
-    data[offset++] = (s.accumulator >> s.bitOffset);
+    data[offset++] = s.accumulator >> s.bitOffset;
     s.bitOffset += 8;
     length--;
   }
@@ -2121,7 +2121,7 @@ void _copyBytes(
     }
 
     while (length != 0) {
-      data[offset++] = (s.accumulator >> s.bitOffset);
+      data[offset++] = s.accumulator >> s.bitOffset;
       s.bitOffset += 8;
       length--;
     }
@@ -2134,7 +2134,7 @@ void _copyBytes(
     final len = _readInput(s.input, data, offset, length);
 
     if (len == -1) {
-      throw 'Unexpected end of input';
+      throw const BrotliException('Unexpected end of input');
     }
 
     offset += len;
@@ -2152,7 +2152,7 @@ void _bytesToNibbles(
 
   for (var i = 0; i < halfLen; i++) {
     shortBuffer[i] =
-        ((byteBuffer[i * 2] & 0xFF) | ((byteBuffer[(i * 2) + 1] & 0xFF) << 8));
+        (byteBuffer[i * 2] & 0xFF) | ((byteBuffer[(i * 2) + 1] & 0xFF) << 8);
   }
 }
 
@@ -2162,7 +2162,9 @@ int _readInput(
   int offset,
   int length,
 ) {
-  if (src == null) return -1;
+  if (src == null) {
+    return -1;
+  }
 
   final end = min(src.offset + length, src.data.length);
   final bytesRead = end - src.offset;
@@ -2222,10 +2224,12 @@ class BrotliDecoder extends Converter<List<int>, List<int>> {
 class _BufferSink extends ByteConversionSink {
   final builder = BytesBuilder(copy: false);
 
+  @override
   void add(List<int> chunk) {
     builder.add(chunk);
   }
 
+  @override
   void addSlice(
     List<int> chunk,
     int start,
@@ -2239,6 +2243,7 @@ class _BufferSink extends ByteConversionSink {
     }
   }
 
+  @override
   void close() {
     // nada.
   }

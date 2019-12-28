@@ -1,3 +1,4 @@
+import 'package:brotli/src/exception.dart';
 import 'package:brotli/src/helper.dart';
 
 const String _data0 =
@@ -18,7 +19,7 @@ List<int> _unpackDictionaryData(
   final dict = _toUsAsciiBytes(data0 + data1);
 
   if (dict.length != dictionary.length) {
-    throw 'Corrupted brotli dictionary';
+    throw const BrotliException('Corrupted brotli dictionary');
   }
 
   var offset = 0;
@@ -42,8 +43,8 @@ List<int> _unpackDictionaryData(
 }
 
 List<int> _toUsAsciiBytes(String src) {
-  var n = src.length;
-  var result = createInt8List(n);
+  final n = src.length;
+  final result = createInt8List(n);
 
   for (var i = 0; i < n; i++) {
     result[i] = src.codeUnitAt(i);

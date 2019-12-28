@@ -10,20 +10,32 @@ extension ListExtension on List<int> {
 
 List<int> createInt32List(int length, [int value]) {
   final data = Int32List(length);
-  if (value != null) data.fillRange(0, data.length, value);
+
+  if (value != null) {
+    data.fillRange(0, data.length, value);
+  }
+
   return data;
 }
 
 List<int> createInt16List(int length, [int value]) {
   // TODO: Int16 quando "triple shift" for implementado!
   final data = Uint16List(length);
-  if (value != null) data.fillRange(0, data.length, value);
+
+  if (value != null) {
+    data.fillRange(0, data.length, value);
+  }
+
   return data;
 }
 
 List<int> createInt8List(int length, [int value]) {
   final data = Int8List(length);
-  if (value != null) data.fillRange(0, data.length, value);
+
+  if (value != null) {
+    data.fillRange(0, data.length, value);
+  }
+
   return data;
 }
 

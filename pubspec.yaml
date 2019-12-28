@@ -8,4 +8,3 @@ environment:
 
 dev_dependencies:
   test: ^1.6.0
-  effective_dart: ^1.1.2

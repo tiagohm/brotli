@@ -59,15 +59,15 @@ final _copyLengthNBits = [
 List<int> _unpackCommandLookupTable() {
   // TODO: Int16 quando "triple shift" for implementado!
   final cmdLookup = createInt32List(2816, 0);
-  var insertLengthOffsets = createInt16List(24, 0);
-  var copyLengthOffsets = createInt16List(24, 0);
+  final insertLengthOffsets = createInt16List(24, 0);
+  final copyLengthOffsets = createInt16List(24, 0);
   copyLengthOffsets[0] = 2;
 
   for (var i = 0; i < 23; ++i) {
     insertLengthOffsets[i + 1] =
-        (insertLengthOffsets[i] + (1 << _insertLengthNBits[i]));
+        insertLengthOffsets[i] + (1 << _insertLengthNBits[i]);
     copyLengthOffsets[i + 1] =
-        (copyLengthOffsets[i] + (1 << _copyLengthNBits[i]));
+        copyLengthOffsets[i] + (1 << _copyLengthNBits[i]);
   }
 
   for (var cmdCode = 0; cmdCode < 704; ++cmdCode) {
@@ -88,7 +88,7 @@ List<int> _unpackCommandLookupTable() {
     final index = cmdCode * 4;
 
     cmdLookup[index + 0] =
-        (_insertLengthNBits[insertCode] | (_copyLengthNBits[copyCode] << 8));
+        _insertLengthNBits[insertCode] | (_copyLengthNBits[copyCode] << 8);
     cmdLookup[index + 1] = insertLengthOffsets[insertCode];
     cmdLookup[index + 2] = copyLengthOffsets[copyCode];
     cmdLookup[index + 3] = distanceContext;

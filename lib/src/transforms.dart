@@ -28,7 +28,8 @@ class Transforms {
     var j = 0;
 
     for (var i = 0; i < n; ++i) {
-      var c = prefixSuffixSrc.codeUnitAt(i);
+      final c = prefixSuffixSrc.codeUnitAt(i);
+
       if (c == 35) {
         prefixSuffixHeads[index++] = j;
       } else {
