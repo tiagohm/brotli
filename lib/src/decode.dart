@@ -2259,6 +2259,10 @@ class _BrotliDecoderSink extends ByteConversionSink {
 
   @override
   void add(List<int> data) {
+    if (_closed) {
+      return;
+    }
+
     _builder.add(data);
   }
 
@@ -2291,13 +2295,12 @@ class _BrotliDecoderSink extends ByteConversionSink {
     }
 
     try {
-      final chunk = createInt8List(16384, 0);
-
       _initState(_s, InputStream(_builder.takeBytes()));
-      _s.output = chunk;
 
       while (true) {
+        final chunk = createInt8List(16384, 0);
         _s.outputOffset = 0;
+        _s.output = chunk;
         _s.outputLength = 16384;
         _s.outputUsed = 0;
 
