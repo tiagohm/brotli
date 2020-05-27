@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:brotli/src/command_lookup.dart';
 import 'package:brotli/src/dictionary.dart';
@@ -2022,6 +2021,8 @@ int _readInput(
 }
 
 const brotli = BrotliCodec();
+
+List<int> brotliDecode(List<int> data) => brotli.decode(data);
 
 /// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and decodes Brotli
 /// compressed bytes to raw bytes.
