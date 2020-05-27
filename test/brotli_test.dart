@@ -119,11 +119,8 @@ void main() {
   });
 
   test('Alice: Sink', () async {
-    final output = await File('./test/assets/alice.br')
-        .openRead()
-        .transform(brotli.decoder)
-        .transform(ascii.decoder)
-        .join();
+    final output =
+        await brotli.decodeStream(File('./test/assets/alice.br').openRead());
 
     expect(output, hasLength(152088));
     expect(

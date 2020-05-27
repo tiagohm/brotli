@@ -2020,8 +2020,13 @@ int _readInput(
   return bytesRead;
 }
 
+/// An instance of the default implementation of the [BrotliCodec].
 const brotli = BrotliCodec();
 
+/// Parses the data and returns the resulting Json object.
+///
+/// Shorthand for `brotli.decode`. Useful if a local variable shadows the global
+/// [brotli] constant.
 List<int> brotliDecode(List<int> data) => brotli.decode(data);
 
 /// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and decodes Brotli
@@ -2037,7 +2042,9 @@ class BrotliCodec extends Codec<List<int>, List<int>> {
   Converter<List<int>, List<int>> get encoder =>
       throw UnsupportedError('Cannot encode with codec: Brotli');
 
-  /// Decodes [encoded] data to String.
+  /// Decodes the [encoded] Brotli data to the corresponding string.
+  ///
+  /// Use [encoding] to specify the charset used by [encoded].
   String decodeToString(
     List<int> encoded, {
     Encoding encoding,
@@ -2046,6 +2053,20 @@ class BrotliCodec extends Codec<List<int>, List<int>> {
     return encoding != null
         ? encoding.decode(decoded)
         : String.fromCharCodes(decoded);
+  }
+
+  /// Decodes the Brotli-encoded [byteStream] to the corresponding string.
+  ///
+  /// Use [encoding] to specify the charset used by [byteStream].
+  Future<String> decodeStream(
+    Stream<List<int>> byteStream, {
+    Encoding encoding = utf8,
+  }) {
+    return decoder
+        .bind(byteStream)
+        .transform(encoding.decoder)
+        .fold(StringBuffer(), (buffer, string) => buffer..write(string))
+        .then((buffer) => buffer.toString());
   }
 }
 
