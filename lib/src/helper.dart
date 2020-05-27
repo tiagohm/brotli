@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+// ignore_for_file: public_member_api_docs
+
 extension ListExtension on List<int> {
   void copyWithin(int target, int start, int end) {
     for (var k = start, i = target; k < end; k++, i++) {

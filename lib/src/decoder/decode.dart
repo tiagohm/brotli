@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:brotli/src/decoder/command_lookup.dart';
-import 'package:brotli/src/decoder/dictionary.dart';
-import 'package:brotli/src/decoder/input_stream.dart';
-import 'package:brotli/src/decoder/lookup.dart';
-import 'package:brotli/src/decoder/state.dart';
-import 'package:brotli/src/decoder/transforms.dart';
-import 'package:brotli/src/exception.dart';
-import 'package:brotli/src/helper.dart';
+import '../exception.dart';
+import '../helper.dart';
+import 'command_lookup.dart';
+import 'dictionary.dart';
+import 'input_stream.dart';
+import 'lookup.dart';
+import 'state.dart';
+import 'transforms.dart';
 
 const _maxHuffmanTableSize = [
   256, 402, 436, 468, 500, 534, 566, 598, //
@@ -2023,15 +2023,16 @@ int _readInput(
 /// An instance of the default implementation of the [BrotliCodec].
 const brotli = BrotliCodec();
 
-/// Parses the data and returns the resulting Json object.
+/// Parses the Brotli-encoded [data] and returns the decoded bytes.
 ///
 /// Shorthand for `brotli.decode`. Useful if a local variable shadows the global
 /// [brotli] constant.
 List<int> brotliDecode(List<int> data) => brotli.decode(data);
 
-/// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and decodes Brotli
-/// compressed bytes to raw bytes.
+/// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and
+/// decodes Brotli compressed bytes to raw bytes.
 class BrotliCodec extends Codec<List<int>, List<int>> {
+  /// Instantiates a new [BrotliCodec].
   const BrotliCodec();
 
   /// Returns the [BrotliDecoder].
@@ -2055,15 +2056,15 @@ class BrotliCodec extends Codec<List<int>, List<int>> {
         : String.fromCharCodes(decoded);
   }
 
-  /// Decodes the Brotli-encoded [byteStream] to the corresponding string.
+  /// Decodes the Brotli-encoded [data] to the corresponding string.
   ///
-  /// Use [encoding] to specify the charset used by [byteStream].
+  /// Use [encoding] to specify the charset used by [data].
   Future<String> decodeStream(
-    Stream<List<int>> byteStream, {
+    Stream<List<int>> data, {
     Encoding encoding = utf8,
   }) {
     return decoder
-        .bind(byteStream)
+        .bind(data)
         .transform(encoding.decoder)
         .fold(StringBuffer(), (buffer, string) => buffer..write(string))
         .then((buffer) => buffer.toString());
@@ -2112,6 +2113,7 @@ void _decodeToSink(
 
 /// Converts Brotli compressed bytes to raw bytes.
 class BrotliDecoder extends Converter<List<int>, List<int>> {
+  /// Instantiates a new [BrotliDecoder].
   const BrotliDecoder();
 
   @override
@@ -2127,18 +2129,18 @@ class BrotliDecoder extends Converter<List<int>, List<int>> {
 
 class _BrotliSink implements Sink<List<int>> {
   final Sink<List<int>> sink;
-  final buffer = BytesBuilder(copy: false);
+  final _buffer = BytesBuilder(copy: false);
 
   _BrotliSink(this.sink);
 
   @override
   void add(List<int> data) {
-    buffer.add(data);
+    _buffer.add(data);
   }
 
   @override
   void close() {
-    _decodeToSink(buffer.takeBytes(), sink);
+    _decodeToSink(_buffer.takeBytes(), sink);
     sink.close();
   }
 }

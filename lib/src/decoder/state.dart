@@ -1,22 +1,24 @@
-import 'package:brotli/src/decoder/input_stream.dart';
-import 'package:brotli/src/helper.dart';
+import '../helper.dart';
+import 'input_stream.dart';
+
+// ignore_for_file: public_member_api_docs
 
 class State {
-  var ringBuffer = createInt8List(0);
-  var contextModes = createInt8List(0);
-  var contextMap = createInt8List(0);
-  var distContextMap = createInt8List(0);
-  var distExtraBits = createInt8List(0);
-  var output = createInt8List(0);
-  var byteBuffer = createInt8List(0);
-  var shortBuffer = createInt16List(0);
-  var intBuffer = createInt32List(0);
-  var rings = createInt32List(10);
-  var blockTrees = createInt32List(0);
-  var literalTreeGroup = createInt32List(0);
-  var commandTreeGroup = createInt32List(0);
-  var distanceTreeGroup = createInt32List(0);
-  var distOffset = createInt32List(0);
+  List<int> ringBuffer = createInt8List(0);
+  List<int> contextModes = createInt8List(0);
+  List<int> contextMap = createInt8List(0);
+  List<int> distContextMap = createInt8List(0);
+  List<int> distExtraBits = createInt8List(0);
+  List<int> output = createInt8List(0);
+  List<int> byteBuffer = createInt8List(0);
+  List<int> shortBuffer = createInt16List(0);
+  List<int> intBuffer = createInt32List(0);
+  List<int> rings = createInt32List(10);
+  List<int> blockTrees = createInt32List(0);
+  List<int> literalTreeGroup = createInt32List(0);
+  List<int> commandTreeGroup = createInt32List(0);
+  List<int> distanceTreeGroup = createInt32List(0);
+  List<int> distOffset = createInt32List(0);
 
   int accumulator = 0;
 

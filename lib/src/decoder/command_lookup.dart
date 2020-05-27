@@ -1,6 +1,8 @@
-import 'package:brotli/src/helper.dart';
+import '../helper.dart';
 
-final cmdLookup = _unpackCommandLookupTable();
+// ignore_for_file: public_member_api_docs
+
+final List<int> cmdLookup = _unpackCommandLookupTable();
 
 const _insertLengthNBits = [
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, //
