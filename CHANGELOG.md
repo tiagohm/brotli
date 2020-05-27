@@ -1,23 +1,28 @@
+## 0.3.0
+ - Otimisations.
+ - New methods: `brotliDecode` and `decodeStream`.
+ - Add `encoding` parameter to `decodeToString` method.
+
 ## 0.2.2
 
-- Bug fix.
+ - Bug fix.
 
 ## 0.2.1
 
-- Bug fix.
+ - Bug fix.
 
 ## 0.2.0
 
-- Implemented startChunkedConversion method.
+ - Implemented startChunkedConversion method.
 
 ## 0.1.1
 
-- Added const variable to BrotliCodec class.
+ - Added const variable to BrotliCodec class.
 
 ## 0.1.0+1
 
-- Lint fixes.
+ - Lint fixes.
 
 ## 0.1.0
 
-- Initial version.
+ - Initial version.

@@ -1,6 +1,6 @@
 # Brotli
 
-Brotli decoder for Dart.
+Pure Dart Brotli decoder.
 
 ### Installation
 
@@ -8,7 +8,7 @@ In `pubspec.yaml` add the following dependency:
 
 ```yaml
 dependencies:
-  brotli: ^0.2.1
+  brotli: ^0.3.0
 ```
 
 ### Example
