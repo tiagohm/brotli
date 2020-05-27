@@ -12,215 +12,61 @@ import 'package:brotli/src/state.dart';
 import 'package:brotli/src/transforms.dart';
 import 'package:brotli/src/helper.dart';
 
-final _maxHuffmanTableSize = createInt16ListFromList([
-  256,
-  402,
-  436,
-  468,
-  500,
-  534,
-  566,
-  598,
-  630,
-  662,
-  694,
-  726,
-  758,
-  790,
-  822,
-  854,
-  886,
-  920,
-  952,
-  984,
-  1016,
-  1048,
-  1080,
-]);
-final _codeLengthCodeOrder = createInt32ListFromList([
-  1,
-  2,
-  3,
-  4,
-  0,
-  5,
-  17,
-  6,
-  16,
-  7,
-  8,
-  9,
-  10,
-  11,
-  12,
-  13,
-  14,
-  15,
-]);
-final _distanceShortCodeIndexOffset = createInt8ListFromList([
-  0,
-  3,
-  2,
-  1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  3,
-  3,
-  3,
-  3,
-  3,
-  3,
-]);
-final _distanceShortCodeValueOffset = createInt8ListFromList([
-  0,
-  0,
-  0,
-  0,
-  -1,
-  1,
-  -2,
-  2,
-  -3,
-  3,
-  -1,
-  1,
-  -2,
-  2,
-  -3,
-  3,
-]);
-final _fixedTable = createInt32ListFromList([
-  0x020000,
-  0x020004,
-  0x020003,
-  0x030002,
-  0x020000,
-  0x020004,
-  0x020003,
-  0x040001,
-  0x020000,
-  0x020004,
-  0x020003,
-  0x030002,
-  0x020000,
-  0x020004,
-  0x020003,
-  0x040005,
-]);
-final _dictionaryOffsetsByLength = createInt32ListFromList([
-  0,
-  0,
-  0,
-  0,
-  0,
-  4096,
-  9216,
-  21504,
-  35840,
-  44032,
-  53248,
-  63488,
-  74752,
-  87040,
-  93696,
-  100864,
-  104704,
-  106752,
-  108928,
-  113536,
-  115968,
-  118528,
-  119872,
-  121280,
+const _maxHuffmanTableSize = [
+  256, 402, 436, 468, 500, 534, 566, 598, //
+  630, 662, 694, 726, 758, 790, 822, 854, //
+  886, 920, 952, 984, 1016, 1048, 1080,
+];
+
+const _codeLengthCodeOrder = [
+  1, 2, 3, 4, 0, 5, 17, 6, //
+  16, 7, 8, 9, 10, 11, 12, 13, //
+  14, 15,
+];
+
+const _distanceShortCodeIndexOffset = [
+  0, 3, 2, 1, 0, 0, 0, 0, //
+  0, 0, 3, 3, 3, 3, 3, 3, //
+];
+
+const _distanceShortCodeValueOffset = [
+  0, 0, 0, 0, -1, 1, -2, 2, //
+  -3, 3, -1, 1, -2, 2, -3, 3, //
+];
+
+const _fixedTable = [
+  0x020000, 0x020004, 0x020003, 0x030002, //
+  0x020000, 0x020004, 0x020003, 0x040001, //
+  0x020000, 0x020004, 0x020003, 0x030002, //
+  0x020000, 0x020004, 0x020003, 0x040005, //
+];
+
+const _dictionaryOffsetsByLength = [
+  0, 0, 0, 0, 0, 4096, 9216, 21504, //
+  35840, 44032, 53248, 63488, 74752, 87040, 93696, 100864, //
+  104704, 106752, 108928, 113536, 115968, 118528, 119872, 121280, //
   122016,
-]);
-final _dictionarySizeBitsByLength = createInt8ListFromList([
-  0,
-  0,
-  0,
-  0,
-  10,
-  10,
-  11,
-  11,
-  10,
-  10,
-  10,
-  10,
-  10,
-  9,
-  9,
-  8,
-  7,
-  7,
-  8,
-  7,
-  7,
-  6,
-  6,
-  5,
-  5,
-]);
-final _blockLengthOffset = createInt16ListFromList([
-  1,
-  5,
-  9,
-  13,
-  17,
-  25,
-  33,
-  41,
-  49,
-  65,
-  81,
-  97,
-  113,
-  145,
-  177,
-  209,
-  241,
-  305,
-  369,
-  497,
-  753,
-  1265,
-  2289,
-  4337,
-  8433,
-  16625,
-]);
-final _blockLengthNBits = createInt8ListFromList([
-  2,
-  2,
-  2,
-  2,
-  3,
-  3,
-  3,
-  3,
-  4,
-  4,
-  4,
-  4,
-  5,
-  5,
-  5,
-  5,
-  6,
-  6,
-  7,
-  8,
-  9,
-  10,
-  11,
-  12,
-  13,
-  24,
-]);
+];
+
+const _dictionarySizeBitsByLength = [
+  0, 0, 0, 0, 10, 10, 11, 11, //
+  10, 10, 10, 10, 10, 9, 9, 8, //
+  7, 7, 8, 7, 7, 6, 6, 5, 5, //
+];
+
+const _blockLengthOffset = [
+  1, 5, 9, 13, 17, 25, 33, 41, //
+  49, 65, 81, 97, 113, 145, 177, 209, //
+  241, 305, 369, 497, 753, 1265, 2289, 4337, //
+  8433, 16625,
+];
+
+const _blockLengthNBits = [
+  2, 2, 2, 2, 3, 3, 3, 3, //
+  4, 4, 4, 4, 5, 5, 5, 5, //
+  6, 6, 7, 8, 9, 10, 11, 12, //
+  13, 24, //
+];
 
 int _log2floor(int i) {
   var result = -1;
@@ -320,13 +166,13 @@ void _initState(
     throw const BrotliException('State MUST be uninitialized');
   }
 
-  s.blockTrees = createInt32List(3091, 0);
+  s.blockTrees = createInt32List(3091);
   s.blockTrees[0] = 7;
   s.distRbIdx = 3;
   final maxDistanceAlphabetLimit =
       _calculateDistanceAlphabetLimit(0x7FFFFFFC, 3, 15 << 3);
-  s.distExtraBits = createInt8List(maxDistanceAlphabetLimit, 0);
-  s.distOffset = createInt32List(maxDistanceAlphabetLimit, 0);
+  s.distExtraBits = createInt8List(maxDistanceAlphabetLimit);
+  s.distOffset = createInt32List(maxDistanceAlphabetLimit);
   s.input = input;
 
   _initBitReader(s);
@@ -505,7 +351,7 @@ void _inverseMoveToFrontTransform(
   List<int> v,
   int length,
 ) {
-  final mtf = createInt32List(256, 0);
+  final mtf = createInt32List(256);
 
   for (var i = 0; i < 256; i++) {
     mtf[i] = i;
@@ -533,7 +379,7 @@ void _readHuffmanCodeLengths(
   var repeat = 0;
   var repeatCodeLen = 0;
   var space = 32768;
-  final table = createInt32List(32 + 1, 0);
+  final table = createInt32List(32 + 1);
   final tableIdx = table.length - 1;
 
   _buildHuffmanTable(table, tableIdx, 5, codeLengthCodeLengths, 18);
@@ -630,8 +476,8 @@ int _readSimpleHuffmanCode(
   int tableIdx,
   State s,
 ) {
-  final codeLengths = createInt32List(alphabetSizeLimit, 0);
-  final symbols = createInt32List(4, 0);
+  final codeLengths = createInt32List(alphabetSizeLimit);
+  final symbols = createInt32List(4);
   final maxBits = 1 + _log2floor(alphabetSizeMax - 1);
   final numSymbols = _readFewBits(s, 2) + 1;
 
@@ -704,8 +550,8 @@ int _readComplexHuffmanCode(
   int tableIdx,
   State s,
 ) {
-  final codeLengths = createInt32List(alphabetSizeLimit, 0);
-  final codeLengthCodeLengths = createInt32List(18, 0);
+  final codeLengths = createInt32List(alphabetSizeLimit);
+  final codeLengthCodeLengths = createInt32List(18);
   var space = 32;
   var numCodes = 0;
 
@@ -819,7 +665,7 @@ int _decodeContextMap(
 
   final alphabetSize = numTrees + maxRunLengthPrefix;
   final tableSize = _maxHuffmanTableSize[(alphabetSize + 31) >> 5];
-  final table = createInt32List(tableSize + 1, 0);
+  final table = createInt32List(tableSize + 1);
   final tableIdx = table.length - 1;
 
   _readHuffmanCode(alphabetSize, alphabetSize, table, tableIdx, s);
@@ -955,7 +801,7 @@ void _maybeReallocateRingBuffer(State s) {
   }
 
   final ringBufferSizeWithSlack = newSize + 37;
-  final newBuffer = createInt8List(ringBufferSizeWithSlack, 0);
+  final newBuffer = createInt8List(ringBufferSizeWithSlack);
 
   if (s.ringBuffer.isNotEmpty) {
     newBuffer.setAll(0, s.ringBuffer.sublist(0, 0 + s.ringBufferSize));
@@ -1103,7 +949,7 @@ void _readMetablockHuffmanCodesAndContextMaps(State s) {
   s.distancePostfixBits = _readFewBits(s, 2);
   s.numDirectDistanceCodes = _readFewBits(s, 4) << s.distancePostfixBits;
   s.distancePostfixMask = (1 << s.distancePostfixBits) - 1;
-  s.contextModes = createInt8List(s.numLiteralBlockTypes, 0);
+  s.contextModes = createInt8List(s.numLiteralBlockTypes);
 
   for (var i = 0; i < s.numLiteralBlockTypes;) {
     final limit = min(i + 96, s.numLiteralBlockTypes);
@@ -1122,7 +968,7 @@ void _readMetablockHuffmanCodesAndContextMaps(State s) {
     }
   }
 
-  s.contextMap = createInt8List(s.numLiteralBlockTypes << 6, 0);
+  s.contextMap = createInt8List(s.numLiteralBlockTypes << 6);
 
   final numLiteralTrees =
       _decodeContextMap(s.numLiteralBlockTypes << 6, s.contextMap, s);
@@ -1135,7 +981,7 @@ void _readMetablockHuffmanCodesAndContextMaps(State s) {
     }
   }
 
-  s.distContextMap = createInt8List(s.numDistanceBlockTypes << 2, 0);
+  s.distContextMap = createInt8List(s.numDistanceBlockTypes << 2);
   final numDistTrees = _decodeContextMap(
     s.numDistanceBlockTypes << 2,
     s.distContextMap,
@@ -1250,7 +1096,7 @@ List<int> _decodeHuffmanTreeGroup(
   State s,
 ) {
   final maxTableSize = _maxHuffmanTableSize[(alphabetSizeLimit + 31) >> 5];
-  final group = createInt32List(n + n * maxTableSize, 0);
+  final group = createInt32List(n + n * maxTableSize);
   var next = n;
 
   for (var i = 0; i < n; i++) {
@@ -1892,9 +1738,9 @@ int _buildHuffmanTable(
   int codeLengthsSize,
 ) {
   final tableOffset = tableGroup[tableIdx];
-  final sorted = createInt32List(codeLengthsSize, 0);
-  final count = createInt32List(16, 0);
-  final offset = createInt32List(16, 0);
+  final sorted = createInt32List(codeLengthsSize);
+  final count = createInt32List(16);
+  final offset = createInt32List(16);
 
   for (var symbol = 0; symbol < codeLengthsSize; symbol++) {
     count[codeLengths[symbol]]++;
@@ -2028,9 +1874,9 @@ int _readManyBits(State s, int n) {
 }
 
 void _initBitReader(State s) {
-  s.byteBuffer = createInt8List(4160, 0);
+  s.byteBuffer = createInt8List(4160);
   s.accumulator = 0;
-  s.shortBuffer = createInt16List(2080, 0);
+  s.shortBuffer = createInt16List(2080);
   s.bitOffset = 32;
   s.halfOffset = 2048;
   s.endOfStreamReached = 0;
@@ -2191,9 +2037,55 @@ class BrotliCodec extends Codec<List<int>, List<int>> {
       throw UnsupportedError('Cannot encode with codec: Brotli');
 
   /// Decodes [encoded] data to String.
-  String decodeToString(List<int> encoded) {
-    return String.fromCharCodes(decoder.convert(encoded));
+  String decodeToString(
+    List<int> encoded, {
+    Encoding encoding,
+  }) {
+    final decoded = decoder.convert(encoded);
+    return encoding != null
+        ? encoding.decode(decoded)
+        : String.fromCharCodes(decoded);
   }
+}
+
+List<int> _decode(List<int> data) {
+  List<int> output;
+  final sink =
+      ByteConversionSink.withCallback((accumulated) => output = accumulated);
+  _decodeToSink(data, sink);
+  sink.close();
+  return output;
+}
+
+void _decodeToSink(
+  List<int> data,
+  Sink<List<int>> sink,
+) {
+  final s = State();
+  final chunk = createUint8List(16384);
+  var isLast = false;
+
+  _initState(s, InputStream(data));
+
+  while (!isLast) {
+    s.outputOffset = 0;
+    s.output = chunk;
+    s.outputLength = chunk.length;
+    s.outputUsed = 0;
+
+    _decompress(s);
+
+    final len = s.outputUsed;
+    isLast = len < chunk.length;
+
+    if (len < chunk.length) {
+      sink.add(chunk.sublist(0, len));
+    } else {
+      sink.add(chunk);
+    }
+  }
+
+  _close(s);
 }
 
 /// Converts Brotli compressed bytes to raw bytes.
@@ -2202,129 +2094,29 @@ class BrotliDecoder extends Converter<List<int>, List<int>> {
 
   @override
   List<int> convert(List<int> input) {
-    final sink = _BufferSink();
-
-    startChunkedConversion(sink)
-      ..add(input)
-      ..close();
-
-    return sink.builder.takeBytes();
+    return _decode(input);
   }
 
   @override
   Sink<List<int>> startChunkedConversion(Sink<List<int>> sink) {
-    if (sink is! ByteConversionSink) {
-      sink = ByteConversionSink.from(sink);
-    }
-
-    return _BrotliDecoderSink(sink);
+    return _BrotliSink(sink);
   }
 }
 
-class _BufferSink extends ByteConversionSink {
-  final builder = BytesBuilder(copy: false);
+class _BrotliSink implements Sink<List<int>> {
+  final Sink<List<int>> sink;
+  final buffer = BytesBuilder(copy: false);
 
-  @override
-  void add(List<int> chunk) {
-    builder.add(chunk);
-  }
-
-  @override
-  void addSlice(
-    List<int> chunk,
-    int start,
-    int end,
-    bool isLast,
-  ) {
-    if (chunk is Uint8List) {
-      builder.add(Uint8List.view(chunk.buffer, start, end - start));
-    } else {
-      builder.add(chunk.sublist(start, end));
-    }
-  }
-
-  @override
-  void close() {
-    // nada.
-  }
-}
-
-class _BrotliDecoderSink extends ByteConversionSink {
-  final ByteConversionSink sink;
-  final State _s = State();
-  final _builder = BytesBuilder();
-  var _closed = false;
-
-  _BrotliDecoderSink(this.sink);
+  _BrotliSink(this.sink);
 
   @override
   void add(List<int> data) {
-    if (_closed) {
-      return;
-    }
-
-    _builder.add(data);
-  }
-
-  @override
-  void addSlice(
-    List<int> data,
-    int start,
-    int end,
-    bool isLast,
-  ) {
-    if (_closed) {
-      return;
-    }
-
-    if (end == null) {
-      throw ArgumentError.notNull('end');
-    }
-
-    _builder.add(data.sublist(start, end));
-
-    if (isLast) {
-      close();
-    }
+    buffer.add(data);
   }
 
   @override
   void close() {
-    if (_closed) {
-      return;
-    }
-
-    try {
-      _initState(_s, InputStream(_builder.takeBytes()));
-
-      while (true) {
-        final chunk = createInt8List(16384, 0);
-        _s.outputOffset = 0;
-        _s.output = chunk;
-        _s.outputLength = 16384;
-        _s.outputUsed = 0;
-
-        _decompress(_s);
-
-        final len = _s.outputUsed;
-        final isLast = len < 16384;
-
-        if (len < 16384) {
-          sink.addSlice(chunk, 0, len, isLast);
-        } else {
-          sink.add(chunk);
-        }
-
-        if (isLast) {
-          break;
-        }
-      }
-
-      _close(_s);
-    } finally {
-      _closed = true;
-    }
-
+    _decodeToSink(buffer.takeBytes(), sink);
     sink.close();
   }
 }

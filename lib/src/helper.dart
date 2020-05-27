@@ -39,14 +39,13 @@ List<int> createInt8List(int length, [int value]) {
   return data;
 }
 
-List<int> createInt32ListFromList(List<int> data) {
-  return Int32List.fromList(data);
+List<int> createUint8List(int length, [int value]) {
+  final data = Uint8List(length);
+
+  if (value != null) {
+    data.fillRange(0, data.length, value);
+  }
+
+  return data;
 }
 
-List<int> createInt16ListFromList(List<int> data) {
-  return Int16List.fromList(data);
-}
-
-List<int> createInt8ListFromList(List<int> data) {
-  return Int8List.fromList(data);
-}

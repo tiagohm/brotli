@@ -14,10 +14,10 @@ class Transforms {
   final List<int> prefixSuffixHeads;
 
   Transforms(this.numTransforms, int prefixSuffixLen, int prefixSuffixCount)
-      : triplets = createInt32List(numTransforms * 3, 0),
-        params = createInt16List(numTransforms, 0),
-        prefixSuffixStorage = createInt8List(prefixSuffixLen, 0),
-        prefixSuffixHeads = createInt32List(prefixSuffixCount + 1, 0);
+      : triplets = createInt32List(numTransforms * 3),
+        params = createInt16List(numTransforms),
+        prefixSuffixStorage = createInt8List(prefixSuffixLen),
+        prefixSuffixHeads = createInt32List(prefixSuffixCount + 1);
 
   void unpack(
     String prefixSuffixSrc,
