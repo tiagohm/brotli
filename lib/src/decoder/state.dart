@@ -1,5 +1,5 @@
+import 'package:brotli/src/decoder/input_stream.dart';
 import 'package:brotli/src/helper.dart';
-import 'package:brotli/src/input_stream.dart';
 
 class State {
   var ringBuffer = createInt8List(0);

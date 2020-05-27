@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:brotli/src/command_lookup.dart';
-import 'package:brotli/src/dictionary.dart';
+import 'package:brotli/src/decoder/command_lookup.dart';
+import 'package:brotli/src/decoder/dictionary.dart';
+import 'package:brotli/src/decoder/input_stream.dart';
+import 'package:brotli/src/decoder/lookup.dart';
+import 'package:brotli/src/decoder/state.dart';
+import 'package:brotli/src/decoder/transforms.dart';
 import 'package:brotli/src/exception.dart';
-import 'package:brotli/src/input_stream.dart';
-import 'package:brotli/src/lookup.dart';
-import 'package:brotli/src/state.dart';
-import 'package:brotli/src/transforms.dart';
 import 'package:brotli/src/helper.dart';
 
 const _maxHuffmanTableSize = [

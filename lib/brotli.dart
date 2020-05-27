@@ -1,4 +1,4 @@
 library brotli;
 
-export 'src/decode.dart';
+export 'src/decoder/decode.dart';
 export 'src/exception.dart';
