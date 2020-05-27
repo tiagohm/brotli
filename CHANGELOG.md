@@ -1,3 +1,6 @@
+## 0.3.0+1
+ - Update documentation.
+
 ## 0.3.0
  - Otimisations.
  - New methods: `brotliDecode` and `decodeStream`.
