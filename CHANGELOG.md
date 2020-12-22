@@ -1,3 +1,6 @@
+## 0.4.0
+ - Web support ([#1](https://github.com/tiagohm/brotli/pull/1))
+
 ## 0.3.0+1
  - Update documentation.
 

@@ -8,7 +8,7 @@ In `pubspec.yaml` add the following dependency:
 
 ```yaml
 dependencies:
-  brotli: ^0.3.0
+  brotli: ^0.4.0
 ```
 
 ### Example

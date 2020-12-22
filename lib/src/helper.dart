@@ -21,7 +21,6 @@ List<int> createInt32List(int length, [int value]) {
 }
 
 List<int> createInt16List(int length, [int value]) {
-  // TODO: Int16 quando "triple shift" for implementado!
   final data = Uint16List(length);
 
   if (value != null) {
@@ -50,4 +49,3 @@ List<int> createUint8List(int length, [int value]) {
 
   return data;
 }
-
