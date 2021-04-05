@@ -1,3 +1,6 @@
+## 0.5.0
+ - Null safety support
+
 ## 0.4.0
  - Web support ([#1](https://github.com/tiagohm/brotli/pull/1))
 
