@@ -1,8 +1,10 @@
 # Brotli
 
+![Pub Version](https://img.shields.io/pub/v/brotli?style=flat-square)
+
 Pure Dart Brotli decoder.
 
-### Installation
+## Installation
 
 In `pubspec.yaml` add the following dependency:
 
@@ -11,7 +13,7 @@ dependencies:
   brotli: ^0.4.0
 ```
 
-### Example
+## Example
 
 ```dart
 import 'dart:io';
