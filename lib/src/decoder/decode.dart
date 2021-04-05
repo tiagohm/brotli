@@ -2002,7 +2002,7 @@ void _bytesToNibbles(
 }
 
 int _readInput(
-  InputStream src,
+  InputStream? src,
   List<int> dst,
   int offset,
   int length,
@@ -2048,7 +2048,7 @@ class BrotliCodec extends Codec<List<int>, List<int>> {
   /// Use [encoding] to specify the charset used by [encoded].
   String decodeToString(
     List<int> encoded, {
-    Encoding encoding,
+    Encoding? encoding,
   }) {
     final decoded = decoder.convert(encoded);
     return encoding != null
@@ -2066,13 +2066,13 @@ class BrotliCodec extends Codec<List<int>, List<int>> {
     return decoder
         .bind(data)
         .transform(encoding.decoder)
-        .fold(StringBuffer(), (buffer, string) => buffer..write(string))
+        .fold<StringBuffer>(StringBuffer(), (b, string) => b..write(string))
         .then((buffer) => buffer.toString());
   }
 }
 
 List<int> _decode(List<int> data) {
-  List<int> output;
+  var output = const <int>[];
   final sink =
       ByteConversionSink.withCallback((accumulated) => output = accumulated);
   _decodeToSink(data, sink);

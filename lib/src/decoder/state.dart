@@ -68,7 +68,7 @@ class State {
   int isEager = 0;
   int isLargeWindow = 0;
 
-  InputStream input;
+  InputStream? input;
 
   State() {
     rings[0] = 16;

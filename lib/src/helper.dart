@@ -10,7 +10,7 @@ extension ListExtension on List<int> {
   }
 }
 
-List<int> createInt32List(int length, [int value]) {
+List<int> createInt32List(int length, [int? value]) {
   final data = Int32List(length);
 
   if (value != null) {
@@ -20,7 +20,7 @@ List<int> createInt32List(int length, [int value]) {
   return data;
 }
 
-List<int> createInt16List(int length, [int value]) {
+List<int> createInt16List(int length, [int? value]) {
   final data = Uint16List(length);
 
   if (value != null) {
@@ -30,7 +30,7 @@ List<int> createInt16List(int length, [int value]) {
   return data;
 }
 
-List<int> createInt8List(int length, [int value]) {
+List<int> createInt8List(int length, [int? value]) {
   final data = Int8List(length);
 
   if (value != null) {
@@ -40,7 +40,7 @@ List<int> createInt8List(int length, [int value]) {
   return data;
 }
 
-List<int> createUint8List(int length, [int value]) {
+List<int> createUint8List(int length, [int? value]) {
   final data = Uint8List(length);
 
   if (value != null) {
