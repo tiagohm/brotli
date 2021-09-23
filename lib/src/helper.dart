@@ -21,7 +21,7 @@ List<int> createInt32List(int length, [int? value]) {
 }
 
 List<int> createInt16List(int length, [int? value]) {
-  final data = Uint16List(length);
+  final data = Int16List(length);
 
   if (value != null) {
     data.fillRange(0, data.length, value);

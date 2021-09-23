@@ -72,9 +72,9 @@ int _log2floor(int i) {
   var step = 16;
 
   while (step > 0) {
-    if ((i >> step) != 0) {
+    if ((i >>> step) != 0) {
       result += step;
-      i = i >> step;
+      i = i >>> step;
     }
 
     step = step >> 1;
@@ -82,6 +82,26 @@ int _log2floor(int i) {
 
   return result + i;
 }
+
+const _logBitness = 6;
+const _bitness = 1 << _logBitness;
+const _capacity = 4096;
+// Don't bother to replenish the buffer while
+// this number of bytes is available.
+const _safeguard = 36;
+const _waterline = _capacity - _safeguard;
+// After encountering the end of the input stream, this amount
+// of zero bytes will be appended.
+const _slack = 64;
+const _bufferSize = _capacity + _slack;
+
+const _byteness = _bitness ~/ 8;
+const _logHalfSize = _logBitness - 4;
+const _halfBitness = _bitness ~/ 2;
+const _halfSize = _byteness ~/ 2;
+const _halvesCapacity = _capacity ~/ _halfSize;
+const _halfBufferSize = _bufferSize ~/ _halfSize;
+const _halfWaterline = _waterline ~/ _halfSize;
 
 int _calculateDistanceAlphabetSize(
   int npostfix,
@@ -112,11 +132,7 @@ int _decodeWindowBits(s) {
 
   s.isLargeWindow = 0;
 
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   if (_readFewBits(s, 1) == 0) {
     return 16;
@@ -196,11 +212,8 @@ void _close(s) {
 }
 
 int _decodeVarLenUnsignedByte(State s) {
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
+
   if (_readFewBits(s, 1) != 0) {
     final n = _readFewBits(s, 3);
 
@@ -215,11 +228,7 @@ int _decodeVarLenUnsignedByte(State s) {
 }
 
 void _decodeMetaBlockLength(State s) {
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   s.inputEnd = _readFewBits(s, 1);
   s.metaBlockLength = 0;
@@ -246,11 +255,7 @@ void _decodeMetaBlockLength(State s) {
     }
 
     for (var i = 0; i < sizeBytes; i++) {
-      if (s.bitOffset >= 16) {
-        s.accumulator =
-            (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-        s.bitOffset -= 16;
-      }
+      _fillBitWindow(s);
 
       final bits = _readFewBits(s, 8);
 
@@ -262,11 +267,7 @@ void _decodeMetaBlockLength(State s) {
     }
   } else {
     for (var i = 0; i < sizeNibbles; i++) {
-      if (s.bitOffset >= 16) {
-        s.accumulator =
-            (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-        s.bitOffset -= 16;
-      }
+      _fillBitWindow(s);
 
       final bits = _readFewBits(s, 4);
 
@@ -290,7 +291,7 @@ int _readSymbol(
   State s,
 ) {
   var offset = tableGroup[tableIdx];
-  final val = s.accumulator >> s.bitOffset;
+  final val = _peekBits(s);
   offset += val & 0xFF;
   final bits = tableGroup[offset] >> 16;
   final sym = tableGroup[offset] & 0xFFFF;
@@ -303,7 +304,7 @@ int _readSymbol(
   offset += sym;
 
   final mask = (1 << bits) - 1;
-  offset += (val & mask) >> 8;
+  offset += (val & mask) >>> 8;
   s.bitOffset += (tableGroup[offset] >> 16) + 8;
 
   return tableGroup[offset] & 0xFFFF;
@@ -314,20 +315,12 @@ int _readBlockLength(
   int tableIdx,
   State s,
 ) {
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   final code = _readSymbol(tableGroup, tableIdx, s);
   final n = _blockLengthNBits[code];
 
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   return _blockLengthOffset[code] +
       ((n <= 16) ? _readFewBits(s, n) : _readManyBits(s, n));
@@ -384,23 +377,19 @@ void _readHuffmanCodeLengths(
   _buildHuffmanTable(table, tableIdx, 5, codeLengthCodeLengths, 18);
 
   while (symbol < numSymbols && space > 0) {
-    if (s.halfOffset > 2030) {
-      _doReadMoreInput(s);
-    }
+    _readMoreInput(s);
+    _fillBitWindow(s);
 
-    if (s.bitOffset >= 16) {
-      s.accumulator =
-          (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-      s.bitOffset -= 16;
-    }
+    final p = _peekBits(s) & 31;
 
-    final p = (s.accumulator >> s.bitOffset) & 31;
     s.bitOffset += table[p] >> 16;
     final codeLen = table[p] & 0xFFFF;
 
     if (codeLen < 16) {
       repeat = 0;
+
       codeLengths[symbol++] = codeLen;
+
       if (codeLen != 0) {
         prevCodeLen = codeLen;
         space -= 32768 >> codeLen;
@@ -425,11 +414,7 @@ void _readHuffmanCodeLengths(
         repeat <<= extraBits;
       }
 
-      if (s.bitOffset >= 16) {
-        s.accumulator =
-            (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-        s.bitOffset -= 16;
-      }
+      _fillBitWindow(s);
 
       repeat += _readFewBits(s, extraBits) + 3;
       final repeatDelta = repeat - oldRepeat;
@@ -481,11 +466,7 @@ int _readSimpleHuffmanCode(
   final numSymbols = _readFewBits(s, 2) + 1;
 
   for (var i = 0; i < numSymbols; i++) {
-    if (s.bitOffset >= 16) {
-      s.accumulator =
-          (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-      s.bitOffset -= 16;
-    }
+    _fillBitWindow(s);
 
     final symbol = _readFewBits(s, maxBits);
 
@@ -557,13 +538,9 @@ int _readComplexHuffmanCode(
   for (var i = skip; i < 18 && space > 0; i++) {
     final codeLenIdx = _codeLengthCodeOrder[i];
 
-    if (s.bitOffset >= 16) {
-      s.accumulator =
-          (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-      s.bitOffset -= 16;
-    }
+    _fillBitWindow(s);
 
-    final p = (s.accumulator >> s.bitOffset) & 15;
+    final p = _peekBits(s) & 15;
     s.bitOffset += _fixedTable[p] >> 16;
     final v = _fixedTable[p] & 0xFFFF;
 
@@ -602,15 +579,9 @@ int _readHuffmanCode(
   int tableIdx,
   State s,
 ) {
-  if (s.halfOffset > 2030) {
-    _doReadMoreInput(s);
-  }
+  _readMoreInput(s);
 
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   final simpleCodeOrSkip = _readFewBits(s, 2);
 
@@ -638,9 +609,7 @@ int _decodeContextMap(
   List<int> contextMap,
   State s,
 ) {
-  if (s.halfOffset > 2030) {
-    _doReadMoreInput(s);
-  }
+  _readMoreInput(s);
 
   final numTrees = _decodeVarLenUnsignedByte(s) + 1;
 
@@ -649,11 +618,7 @@ int _decodeContextMap(
     return numTrees;
   }
 
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   final useRleForZeros = _readFewBits(s, 1);
   var maxRunLengthPrefix = 0;
@@ -670,15 +635,9 @@ int _decodeContextMap(
   _readHuffmanCode(alphabetSize, alphabetSize, table, tableIdx, s);
 
   for (var i = 0; i < contextMapSize;) {
-    if (s.halfOffset > 2030) {
-      _doReadMoreInput(s);
-    }
+    _readMoreInput(s);
 
-    if (s.bitOffset >= 16) {
-      s.accumulator =
-          (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-      s.bitOffset -= 16;
-    }
+    _fillBitWindow(s);
 
     final code = _readSymbol(table, tableIdx, s);
 
@@ -686,11 +645,7 @@ int _decodeContextMap(
       contextMap[i] = 0;
       i++;
     } else if (code <= maxRunLengthPrefix) {
-      if (s.bitOffset >= 16) {
-        s.accumulator =
-            (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-        s.bitOffset -= 16;
-      }
+      _fillBitWindow(s);
 
       var reps = (1 << code) + _readFewBits(s, code);
 
@@ -709,11 +664,7 @@ int _decodeContextMap(
     }
   }
 
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   if (_readFewBits(s, 1) == 1) {
     _inverseMoveToFrontTransform(contextMap, contextMapSize);
@@ -730,11 +681,7 @@ int _decodeBlockTypeAndLength(
   final ringBuffers = s.rings;
   final offset = 4 + treeType * 2;
 
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _fillBitWindow(s);
 
   var blockType = _readSymbol(s.blockTrees, 2 * treeType, s);
   final result = _readBlockLength(s.blockTrees, 2 * treeType + 1, s);
@@ -821,9 +768,7 @@ void _readNextMetablockHeader(State s) {
   s.commandTreeGroup = createInt32List(0);
   s.distanceTreeGroup = createInt32List(0);
 
-  if (s.halfOffset > 2030) {
-    _doReadMoreInput(s);
-  }
+  _readMoreInput(s);
 
   _decodeMetaBlockLength(s);
 
@@ -935,15 +880,8 @@ void _readMetablockHuffmanCodesAndContextMaps(State s) {
   s.distanceBlockLength =
       _readMetablockPartition(s, 2, s.numDistanceBlockTypes);
 
-  if (s.halfOffset > 2030) {
-    _doReadMoreInput(s);
-  }
-
-  if (s.bitOffset >= 16) {
-    s.accumulator =
-        (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-    s.bitOffset -= 16;
-  }
+  _readMoreInput(s);
+  _fillBitWindow(s);
 
   s.distancePostfixBits = _readFewBits(s, 2);
   s.numDirectDistanceCodes = _readFewBits(s, 4) << s.distancePostfixBits;
@@ -954,15 +892,11 @@ void _readMetablockHuffmanCodesAndContextMaps(State s) {
     final limit = min(i + 96, s.numLiteralBlockTypes);
 
     for (; i < limit; i++) {
-      if (s.bitOffset >= 16) {
-        s.accumulator =
-            (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-        s.bitOffset -= 16;
-      }
+      _fillBitWindow(s);
       s.contextModes[i] = _readFewBits(s, 2);
     }
 
-    if (s.halfOffset > 2030) {
+    if (s.halfOffset > _halfWaterline) {
       _doReadMoreInput(s);
     }
   }
@@ -1146,6 +1080,7 @@ void _decompress(State s) {
 
   while (s.runningState != 10) {
     switch (s.runningState) {
+      // BLOCK_START.
       case 2:
         if (s.metaBlockLength < 0) {
           throw const BrotliException('Invalid metablock length');
@@ -1156,17 +1091,19 @@ void _decompress(State s) {
         ringBufferMask = s.ringBufferSize - 1;
         ringBuffer = s.ringBuffer;
         continue;
+      // COMPRESSED_BLOCK_START.
       case 3:
         _readMetablockHuffmanCodesAndContextMaps(s);
         s.runningState = 4;
         continue;
+      // MAIN_LOOP.
       case 4:
         if (s.metaBlockLength <= 0) {
           s.runningState = 2;
           continue;
         }
 
-        if (s.halfOffset > 2030) {
+        if (s.halfOffset > _halfWaterline) {
           _doReadMoreInput(s);
         }
 
@@ -1176,11 +1113,7 @@ void _decompress(State s) {
 
         s.commandBlockLength--;
 
-        if (s.bitOffset >= 16) {
-          s.accumulator =
-              (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-          s.bitOffset -= 16;
-        }
+        _fillBitWindow(s);
 
         final cmdCode =
             _readSymbol(s.commandTreeGroup, s.commandTreeIdx, s) << 2;
@@ -1190,40 +1123,26 @@ void _decompress(State s) {
 
         s.distanceCode = cmdLookup[cmdCode + 3];
 
-        if (s.bitOffset >= 16) {
-          s.accumulator =
-              (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-          s.bitOffset -= 16;
-        }
+        _fillBitWindow(s);
 
-        var extraBits = insertAndCopyExtraBits & 0xFF;
+        final insertLengthExtraBits = insertAndCopyExtraBits & 0xFF;
+        s.insertLength =
+            insertLengthOffset + _readBits(s, insertLengthExtraBits);
 
-        s.insertLength = insertLengthOffset +
-            ((extraBits <= 16)
-                ? _readFewBits(s, extraBits)
-                : _readManyBits(s, extraBits));
+        _fillBitWindow(s);
 
-        if (s.bitOffset >= 16) {
-          s.accumulator =
-              (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-          s.bitOffset -= 16;
-        }
+        final copyLengthExtraBits = insertAndCopyExtraBits >> 8;
+        s.copyLength = copyLengthOffset + _readBits(s, copyLengthExtraBits);
 
-        extraBits = insertAndCopyExtraBits >> 8;
-
-        s.copyLength = copyLengthOffset +
-            ((extraBits <= 16)
-                ? _readFewBits(s, extraBits)
-                : _readManyBits(s, extraBits));
         s.j = 0;
         s.runningState = 7;
+
         continue;
+      // INSERT_LOOP.
       case 7:
         if (s.trivialLiteralContext != 0) {
           while (s.j < s.insertLength) {
-            if (s.halfOffset > 2030) {
-              _doReadMoreInput(s);
-            }
+            _readMoreInput(s);
 
             if (s.literalBlockLength == 0) {
               _decodeLiteralBlockSwitch(s);
@@ -1231,11 +1150,7 @@ void _decompress(State s) {
 
             s.literalBlockLength--;
 
-            if (s.bitOffset >= 16) {
-              s.accumulator =
-                  (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-              s.bitOffset -= 16;
-            }
+            _fillBitWindow(s);
 
             ringBuffer[s.pos] = _readSymbol(
               s.literalTreeGroup,
@@ -1257,9 +1172,7 @@ void _decompress(State s) {
           var prevByte2 = ringBuffer[(s.pos - 2) & ringBufferMask] & 0xFF;
 
           while (s.j < s.insertLength) {
-            if (s.halfOffset > 2030) {
-              _doReadMoreInput(s);
-            }
+            _readMoreInput(s);
 
             if (s.literalBlockLength == 0) {
               _decodeLiteralBlockSwitch(s);
@@ -1273,11 +1186,7 @@ void _decompress(State s) {
             s.literalBlockLength--;
             prevByte2 = prevByte1;
 
-            if (s.bitOffset >= 16) {
-              s.accumulator =
-                  (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-              s.bitOffset -= 16;
-            }
+            _fillBitWindow(s);
 
             prevByte1 = _readSymbol(s.literalTreeGroup, literalTreeIdx, s);
             ringBuffer[s.pos] = prevByte1;
@@ -1308,9 +1217,7 @@ void _decompress(State s) {
         if (distanceCode < 0) {
           s.distance = s.rings[s.distRbIdx];
         } else {
-          if (s.halfOffset > 2030) {
-            _doReadMoreInput(s);
-          }
+          _readMoreInput(s);
 
           if (s.distanceBlockLength == 0) {
             _decodeDistanceBlockSwitch(s);
@@ -1318,11 +1225,7 @@ void _decompress(State s) {
 
           s.distanceBlockLength--;
 
-          if (s.bitOffset >= 16) {
-            s.accumulator =
-                (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-            s.bitOffset -= 16;
-          }
+          _fillBitWindow(s);
 
           final distTreeIdx =
               s.distContextMap[s.distContextMapSlice + distanceCode] & 0xFF;
@@ -1342,17 +1245,11 @@ void _decompress(State s) {
             final extraBits = s.distExtraBits[distanceCode];
             int bits;
 
-            if (s.bitOffset + extraBits <= 32) {
+            if (s.bitOffset + extraBits <= _bitness) {
               bits = _readFewBits(s, extraBits);
             } else {
-              if (s.bitOffset >= 16) {
-                s.accumulator = (s.shortBuffer[s.halfOffset++] << 16) |
-                    (s.accumulator >> 16);
-                s.bitOffset -= 16;
-              }
-              bits = extraBits <= 16
-                  ? _readFewBits(s, extraBits)
-                  : _readManyBits(s, extraBits);
+              _fillBitWindow(s);
+              bits = _readBits(s, extraBits);
             }
 
             s.distance =
@@ -1384,6 +1281,7 @@ void _decompress(State s) {
         s.j = 0;
         s.runningState = 8;
         continue;
+      // COPY_LOOP.
       case 8:
         var src = (s.pos - s.distance) & ringBufferMask;
         var dst = s.pos;
@@ -1427,6 +1325,7 @@ void _decompress(State s) {
         }
 
         continue;
+      // USE_DICTIONARY.
       case 9:
         if (s.distance > 0x7FFFFFFC) {
           throw const BrotliException('Invalid backward reference');
@@ -1438,7 +1337,7 @@ void _decompress(State s) {
           final shift = _dictionarySizeBitsByLength[s.copyLength];
           final mask = (1 << shift) - 1;
           final wordIdx = wordId & mask;
-          final transformIdx = wordId >> shift;
+          final transformIdx = wordId >>> shift;
 
           offset += wordIdx * s.copyLength;
 
@@ -1452,6 +1351,7 @@ void _decompress(State s) {
               rfcTransforms,
               transformIdx,
             );
+
             s.pos += len;
             s.metaBlockLength -= len;
 
@@ -1469,17 +1369,12 @@ void _decompress(State s) {
 
         s.runningState = 4;
         continue;
+      // READ_METADATA.
       case 5:
         while (s.metaBlockLength > 0) {
-          if (s.halfOffset > 2030) {
-            _doReadMoreInput(s);
-          }
+          _readMoreInput(s);
 
-          if (s.bitOffset >= 16) {
-            s.accumulator =
-                (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-            s.bitOffset -= 16;
-          }
+          _fillBitWindow(s);
 
           _readFewBits(s, 8);
           s.metaBlockLength--;
@@ -1487,13 +1382,16 @@ void _decompress(State s) {
 
         s.runningState = 2;
         continue;
+      // COPY_UNCOMPRESSED.
       case 6:
         _copyUncompressedData(s);
         continue;
+      // INIT_WRITE.
       case 12:
         s.ringBufferBytesReady = min(s.pos, s.ringBufferSize);
         s.runningState = 13;
         continue;
+      // WRITE.
       case 13:
         if (_writeRingBuffer(s) == 0) {
           return;
@@ -1809,6 +1707,12 @@ int _buildHuffmanTable(
   return totalSize;
 }
 
+void _readMoreInput(State s) {
+  if (s.halfOffset > _halfWaterline) {
+    _doReadMoreInput(s);
+  }
+}
+
 void _doReadMoreInput(State s) {
   if (s.endOfStreamReached != 0) {
     if (_halfAvailable(s) >= -2) {
@@ -1818,19 +1722,19 @@ void _doReadMoreInput(State s) {
     throw const BrotliException('No more input');
   }
 
-  final readOffset = s.halfOffset << 1;
-  var bytesInBuffer = 4096 - readOffset;
-  s.byteBuffer.copyWithin(0, readOffset, 4096);
+  final readOffset = s.halfOffset << _logHalfSize;
+  var bytesInBuffer = _capacity - readOffset;
+  s.byteBuffer.copyWithin(0, readOffset, _capacity);
   s.halfOffset = 0;
 
-  while (bytesInBuffer < 4096) {
-    final spaceLeft = 4096 - bytesInBuffer;
+  while (bytesInBuffer < _capacity) {
+    final spaceLeft = _capacity - bytesInBuffer;
     final len = _readInput(s.input, s.byteBuffer, bytesInBuffer, spaceLeft);
 
     if (len <= 0) {
       s.endOfStreamReached = 1;
       s.tailBytes = bytesInBuffer;
-      bytesInBuffer += 1;
+      bytesInBuffer += _halfSize - 1;
       break;
     }
 
@@ -1847,62 +1751,80 @@ void _checkHealth(
   if (s.endOfStreamReached == 0) {
     return;
   }
-  final byteOffset = (s.halfOffset << 1) + ((s.bitOffset + 7) >> 3) - 4;
+
+  final byteOffset =
+      (s.halfOffset << _logHalfSize) + ((s.bitOffset + 7) >> 3) - _byteness;
+
   if (byteOffset > s.tailBytes) {
     throw const BrotliException('Read after end');
   }
+
   if ((endOfStream != 0) && (byteOffset != s.tailBytes)) {
     throw const BrotliException('Unused bytes after end');
   }
 }
 
-int _readFewBits(
-  State s,
-  int n,
-) {
-  final val = (s.accumulator >> s.bitOffset) & ((1 << n) - 1);
+int _readFewBits(State s, int n) {
+  final val = _peekBits(s) & ((1 << n) - 1);
   s.bitOffset += n;
   return val;
 }
 
+void _doFillBitWindow(State s) {
+  s.accumulator = (s.intBuffer[s.halfOffset++] << _halfBitness) |
+      (s.accumulator >>> _halfBitness);
+  s.bitOffset -= _halfBitness;
+}
+
+void _fillBitWindow(State s) {
+  if (s.bitOffset >= _halfBitness) {
+    _doFillBitWindow(s);
+  }
+}
+
+int _peekBits(State s) {
+  return (s.accumulator >>> s.bitOffset) & 0xFFFFFFFF;
+}
+
+int _readBits(State s, int n) {
+  if (_halfBitness >= 24) {
+    return _readFewBits(s, n);
+  } else {
+    return (n <= 16) ? _readFewBits(s, n) : _readManyBits(s, n);
+  }
+}
+
 int _readManyBits(State s, int n) {
   final low = _readFewBits(s, 16);
-  s.accumulator = (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-  s.bitOffset -= 16;
+  _fillBitWindow(s);
   return low | (_readFewBits(s, n - 16) << 16);
 }
 
 void _initBitReader(State s) {
-  s.byteBuffer = createInt8List(4160);
+  s.byteBuffer = createInt8List(_bufferSize);
   s.accumulator = 0;
-  s.shortBuffer = createInt16List(2080);
-  s.bitOffset = 32;
-  s.halfOffset = 2048;
+  s.intBuffer = createInt32List(_halfBufferSize);
+  s.bitOffset = _bitness;
+  s.halfOffset = _halvesCapacity;
   s.endOfStreamReached = 0;
   _prepare(s);
 }
 
 void _prepare(State s) {
-  if (s.halfOffset > 2030) {
-    _doReadMoreInput(s);
-  }
-
+  _readMoreInput(s);
   _checkHealth(s, 0);
-
-  s.accumulator = (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-  s.bitOffset -= 16;
-  s.accumulator = (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-  s.bitOffset -= 16;
+  _doFillBitWindow(s);
+  _doFillBitWindow(s);
 }
 
 void _reload(State s) {
-  if (s.bitOffset == 32) {
+  if (s.bitOffset == _bitness) {
     _prepare(s);
   }
 }
 
 void _jumpToByteBoundary(State s) {
-  final padding = (32 - s.bitOffset) & 7;
+  final padding = (_bitness - s.bitOffset) & 7;
 
   if (padding != 0) {
     final paddingBits = _readFewBits(s, padding);
@@ -1914,10 +1836,10 @@ void _jumpToByteBoundary(State s) {
 }
 
 int _halfAvailable(State s) {
-  var limit = 2048;
+  var limit = _halvesCapacity;
 
   if (s.endOfStreamReached != 0) {
-    limit = (s.tailBytes + 1) >> 1;
+    limit = (s.tailBytes + (_halfSize - 1)) >> _logHalfSize;
   }
 
   return limit - s.halfOffset;
@@ -1933,8 +1855,8 @@ void _copyBytes(
     throw const BrotliException('Unaligned copyBytes');
   }
 
-  while ((s.bitOffset != 32) && (length != 0)) {
-    data[offset++] = s.accumulator >> s.bitOffset;
+  while ((s.bitOffset != _bitness) && (length != 0)) {
+    data[offset++] = _peekBits(s);
     s.bitOffset += 8;
     length--;
   }
@@ -1943,14 +1865,19 @@ void _copyBytes(
     return;
   }
 
-  final copyNibbles = min(_halfAvailable(s), length >> 1);
+  final copyNibbles = min(_halfAvailable(s), length >> _logHalfSize);
 
   if (copyNibbles > 0) {
-    final readOffset = s.halfOffset << 1;
-    final delta = copyNibbles << 1;
-    data.setAll(offset, s.byteBuffer.sublist(readOffset, readOffset + delta));
+    final readOffset = s.halfOffset << _logHalfSize;
+    final delta = copyNibbles << _logHalfSize;
+
+    for (var i = 0; i < delta; i++) {
+      data[offset + i] = s.byteBuffer[readOffset + i];
+    }
+
     offset += delta;
     length -= delta;
+
     s.halfOffset += copyNibbles;
   }
 
@@ -1959,19 +1886,16 @@ void _copyBytes(
   }
 
   if (_halfAvailable(s) > 0) {
-    if (s.bitOffset >= 16) {
-      s.accumulator =
-          (s.shortBuffer[s.halfOffset++] << 16) | (s.accumulator >> 16);
-      s.bitOffset -= 16;
-    }
+    _fillBitWindow(s);
 
     while (length != 0) {
-      data[offset++] = s.accumulator >> s.bitOffset;
+      data[offset++] = _peekBits(s);
       s.bitOffset += 8;
       length--;
     }
 
     _checkHealth(s, 0);
+
     return;
   }
 
@@ -1992,12 +1916,14 @@ void _bytesToNibbles(
   int byteLen,
 ) {
   final byteBuffer = s.byteBuffer;
-  final halfLen = byteLen >> 1;
-  final shortBuffer = s.shortBuffer;
+  final halfLen = byteLen >> _logHalfSize;
+  final intBuffer = s.intBuffer;
 
   for (var i = 0; i < halfLen; i++) {
-    shortBuffer[i] =
-        (byteBuffer[i * 2] & 0xFF) | ((byteBuffer[(i * 2) + 1] & 0xFF) << 8);
+    intBuffer[i] = ((byteBuffer[i * 4] & 0xFF)) |
+        ((byteBuffer[(i * 4) + 1] & 0xFF) << 8) |
+        ((byteBuffer[(i * 4) + 2] & 0xFF) << 16) |
+        ((byteBuffer[(i * 4) + 3] & 0xFF) << 24);
   }
 }
 
@@ -2085,7 +2011,7 @@ void _decodeToSink(
   Sink<List<int>> sink,
 ) {
   final s = State();
-  final chunk = createUint8List(16384);
+  final chunk = createInt8List(16384);
   var isLast = false;
 
   _initState(s, InputStream(data));

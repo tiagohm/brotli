@@ -11,7 +11,6 @@ class State {
   List<int> distExtraBits = createInt8List(0);
   List<int> output = createInt8List(0);
   List<int> byteBuffer = createInt8List(0);
-  List<int> shortBuffer = createInt16List(0);
   List<int> intBuffer = createInt32List(0);
   List<int> rings = createInt32List(10);
   List<int> blockTrees = createInt32List(0);
