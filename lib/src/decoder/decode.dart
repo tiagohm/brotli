@@ -40,19 +40,6 @@ const _fixedTable = [
   0x020000, 0x020004, 0x020003, 0x040005, //
 ];
 
-const _dictionaryOffsetsByLength = [
-  0, 0, 0, 0, 0, 4096, 9216, 21504, //
-  35840, 44032, 53248, 63488, 74752, 87040, 93696, 100864, //
-  104704, 106752, 108928, 113536, 115968, 118528, 119872, 121280, //
-  122016,
-];
-
-const _dictionarySizeBitsByLength = [
-  0, 0, 0, 0, 10, 10, 11, 11, //
-  10, 10, 10, 10, 10, 9, 9, 8, //
-  7, 7, 8, 7, 7, 6, 6, 5, 5, //
-];
-
 const _blockLengthOffset = [
   1, 5, 9, 13, 17, 25, 33, 41, //
   49, 65, 81, 97, 113, 145, 177, 209, //
@@ -885,7 +872,6 @@ void _readMetablockHuffmanCodesAndContextMaps(State s) {
 
   s.distancePostfixBits = _readFewBits(s, 2);
   s.numDirectDistanceCodes = _readFewBits(s, 4) << s.distancePostfixBits;
-  s.distancePostfixMask = (1 << s.distancePostfixBits) - 1;
   s.contextModes = createInt8List(s.numLiteralBlockTypes);
 
   for (var i = 0; i < s.numLiteralBlockTypes;) {
@@ -1325,49 +1311,22 @@ void _decompress(State s) {
         }
 
         continue;
-      // USE_DICTIONARY.
+      // COPY_FROM_COMPOUND_DICTIONARY.
       case 9:
-        if (s.distance > 0x7FFFFFFC) {
-          throw const BrotliException('Invalid backward reference');
-        }
+        _doUseDictionary(s, fence);
+        continue;
+      // USE_DICTIONARY.
+      case 14:
+        s.pos += _copyFromCompoundDictionary(s, fence);
 
-        if (s.copyLength >= 4 && s.copyLength <= 24) {
-          var offset = _dictionaryOffsetsByLength[s.copyLength];
-          final wordId = s.distance - s.maxDistance - 1;
-          final shift = _dictionarySizeBitsByLength[s.copyLength];
-          final mask = (1 << shift) - 1;
-          final wordIdx = wordId & mask;
-          final transformIdx = wordId >>> shift;
-
-          offset += wordIdx * s.copyLength;
-
-          if (transformIdx < 121) {
-            final len = _transformDictionaryWord(
-              ringBuffer,
-              s.pos,
-              dictionaryData,
-              offset,
-              s.copyLength,
-              rfcTransforms,
-              transformIdx,
-            );
-
-            s.pos += len;
-            s.metaBlockLength -= len;
-
-            if (s.pos >= fence) {
-              s.nextRunningState = 4;
-              s.runningState = 12;
-              continue;
-            }
-          } else {
-            throw const BrotliException('Invalid backward reference');
-          }
-        } else {
-          throw const BrotliException('Invalid backward reference');
+        if (s.pos >= fence) {
+          s.nextRunningState = 14;
+          s.runningState = 12;
+          return;
         }
 
         s.runningState = 4;
+
         continue;
       // READ_METADATA.
       case 5:
@@ -1425,6 +1384,174 @@ void _decompress(State s) {
     _jumpToByteBoundary(s);
     _checkHealth(s, 1);
   }
+}
+
+void _attachDictionaryChunk(State s, List<int> data) {
+  if (s.runningState != 0) {
+    throw const BrotliException("State must be freshly initialized");
+  }
+
+  if (s.cdNumChunks == 0) {
+    s.cdChunks = List.generate(16, (index) => []);
+    s.cdChunkOffsets = createInt32List(16);
+    s.cdBlockBits = -1;
+  }
+
+  if (s.cdNumChunks == 15) {
+    throw const BrotliException("Too many dictionary chunks");
+  }
+
+  s.cdChunks[s.cdNumChunks] = data;
+  s.cdNumChunks++;
+  s.cdTotalSize += data.length;
+  s.cdChunkOffsets[s.cdNumChunks] = s.cdTotalSize;
+}
+
+void _doUseDictionary(State s, int fence) {
+  final data = dictionaryData;
+
+  if (s.distance > 0x7FFFFFFC) {
+    throw const BrotliException("Invalid backward reference");
+  }
+
+  final address = s.distance - s.maxDistance - 1 - s.cdTotalSize;
+
+  if (address < 0) {
+    _initializeCompoundDictionaryCopy(s, -address - 1, s.copyLength);
+    s.runningState = 14;
+  } else {
+    if (s.distance > 0x7FFFFFFC) {
+      throw const BrotliException('Invalid backward reference');
+    }
+
+    final wordLength = s.copyLength;
+
+    if (wordLength > 31) {
+      throw BrotliException("Invalid backward reference");
+    }
+
+    final shift = dictionarySizeBits[wordLength];
+
+    if (shift == 0) {
+      throw const BrotliException("Invalid backward reference");
+    }
+
+    var offset = dictionaryOffsets[s.copyLength];
+    final mask = (1 << shift) - 1;
+    final wordIdx = address & mask;
+    final transformIdx = address >>> shift;
+
+    offset += wordIdx * s.copyLength;
+
+    if (transformIdx >= rfcTransforms.numTransforms) {
+      throw const BrotliException("Invalid backward reference");
+    }
+
+    final len = _transformDictionaryWord(
+      s.ringBuffer,
+      s.pos,
+      data,
+      offset,
+      wordLength,
+      rfcTransforms,
+      transformIdx,
+    );
+
+    s.pos += len;
+    s.metaBlockLength -= len;
+
+    if (s.pos >= fence) {
+      s.nextRunningState = 4;
+      s.runningState = 12;
+    } else {
+      s.runningState = 4;
+    }
+  }
+}
+
+void _initializeCompoundDictionary(State s) {
+  s.cdBlockMap = createInt8List(1 << 8);
+  var blockBits = 8;
+  // If this function is executed, then s.cdTotalSize > 0.
+  while (((s.cdTotalSize - 1) >>> blockBits) != 0) {
+    blockBits++;
+  }
+
+  blockBits -= 8;
+
+  s.cdBlockBits = blockBits;
+  var cursor = 0;
+  var index = 0;
+
+  while (cursor < s.cdTotalSize) {
+    while (s.cdChunkOffsets[index + 1] < cursor) {
+      index++;
+    }
+
+    s.cdBlockMap[cursor >>> blockBits] = index;
+    cursor += 1 << blockBits;
+  }
+}
+
+void _initializeCompoundDictionaryCopy(State s, int address, int length) {
+  if (s.cdBlockBits == -1) {
+    _initializeCompoundDictionary(s);
+  }
+
+  var index = s.cdBlockMap[address >>> s.cdBlockBits];
+
+  while (address >= s.cdChunkOffsets[index + 1]) {
+    index++;
+  }
+
+  if (s.cdTotalSize > address + length) {
+    throw const BrotliException("Invalid backward reference");
+  }
+
+  // Update the recent distances cache.
+  s.distRbIdx = (s.distRbIdx + 1) & 0x3;
+  s.rings[s.distRbIdx] = s.distance;
+  s.metaBlockLength -= length;
+  s.cdBrIndex = index;
+  s.cdBrOffset = address - s.cdChunkOffsets[index];
+  s.cdBrLength = length;
+  s.cdBrCopied = 0;
+}
+
+int _copyFromCompoundDictionary(State s, int fence) {
+  var pos = s.pos;
+  var origPos = pos;
+
+  while (s.cdBrLength != s.cdBrCopied) {
+    final space = fence - pos;
+
+    final chunkLength =
+        s.cdChunkOffsets[s.cdBrIndex + 1] - s.cdChunkOffsets[s.cdBrIndex];
+    final remChunkLength = chunkLength - s.cdBrOffset;
+    var length = s.cdBrLength - s.cdBrCopied;
+
+    if (length > remChunkLength) {
+      length = remChunkLength;
+    }
+
+    if (length > space) {
+      length = space;
+    }
+
+    for (var i = 0; i < length; i++, pos++, s.cdBrOffset++, s.cdBrCopied++) {
+      s.ringBuffer[s.cdBrOffset] = s.cdChunks[s.cdBrIndex][pos];
+    }
+
+    if (length == remChunkLength) {
+      s.cdBrIndex++;
+      s.cdBrOffset = 0;
+    }
+
+    if (pos >= fence) {
+      break;
+    }
+  }
+  return pos - origPos;
 }
 
 int _transformDictionaryWord(
@@ -1958,12 +2085,16 @@ List<int> brotliDecode(List<int> data) => brotli.decode(data);
 /// The [BrotliCodec] encodes raw bytes to Brotli compressed bytes and
 /// decodes Brotli compressed bytes to raw bytes.
 class BrotliCodec extends Codec<List<int>, List<int>> {
+  final List<int> compoundDictionary;
+
   /// Instantiates a new [BrotliCodec].
-  const BrotliCodec();
+  const BrotliCodec({this.compoundDictionary = const []});
 
   /// Returns the [BrotliDecoder].
   @override
-  Converter<List<int>, List<int>> get decoder => const BrotliDecoder();
+  Converter<List<int>, List<int>> get decoder => compoundDictionary.isEmpty
+      ? const BrotliDecoder()
+      : BrotliDecoder(compoundDictionary: compoundDictionary);
 
   @override
   Converter<List<int>, List<int>> get encoder =>
@@ -1997,22 +2128,30 @@ class BrotliCodec extends Codec<List<int>, List<int>> {
   }
 }
 
-List<int> _decode(List<int> data) {
+List<int> _decode(
+  List<int> data, [
+  List<int>? compoundDictionary,
+]) {
   var output = const <int>[];
   final sink =
       ByteConversionSink.withCallback((accumulated) => output = accumulated);
-  _decodeToSink(data, sink);
+  _decodeToSink(data, sink, compoundDictionary);
   sink.close();
   return output;
 }
 
 void _decodeToSink(
   List<int> data,
-  Sink<List<int>> sink,
-) {
+  Sink<List<int>> sink, [
+  List<int>? compoundDictionary,
+]) {
   final s = State();
   final chunk = createInt8List(16384);
   var isLast = false;
+
+  if (compoundDictionary != null && compoundDictionary.isNotEmpty) {
+    _attachDictionaryChunk(s, compoundDictionary);
+  }
 
   _initState(s, InputStream(data));
 
@@ -2039,12 +2178,14 @@ void _decodeToSink(
 
 /// Converts Brotli compressed bytes to raw bytes.
 class BrotliDecoder extends Converter<List<int>, List<int>> {
+  final List<int> compoundDictionary;
+
   /// Instantiates a new [BrotliDecoder].
-  const BrotliDecoder();
+  const BrotliDecoder({this.compoundDictionary = const []});
 
   @override
   List<int> convert(List<int> input) {
-    return _decode(input);
+    return _decode(input, compoundDictionary);
   }
 
   @override

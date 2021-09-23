@@ -51,7 +51,6 @@ class State {
   int contextLookupOffset2 = 0;
   int distanceCode = 0;
   int numDirectDistanceCodes = 0;
-  int distancePostfixMask = 0;
   int distancePostfixBits = 0;
   int distance = 0;
   int copyLength = 0;
@@ -66,6 +65,18 @@ class State {
   int ringBufferBytesReady = 0;
   int isEager = 0;
   int isLargeWindow = 0;
+
+  // Compound dictionary
+  int cdNumChunks = 0;
+  int cdTotalSize = 0;
+  int cdBrIndex = 0;
+  int cdBrOffset = 0;
+  int cdBrLength = 0;
+  int cdBrCopied = 0;
+  List<List<int>> cdChunks = [];
+  List<int> cdChunkOffsets = [];
+  int cdBlockBits = 0;
+  List<int> cdBlockMap = [];
 
   InputStream? input;
 

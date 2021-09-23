@@ -148,4 +148,25 @@ void main() {
     expect(output, contains('ぁ あ ぃ い ぅ う ぇ え ぉ お か が'));
     expect(output, contains('豈 更 車 賈 滑 串 句 龜 龜 契 金 喇'));
   });
+
+  test("No Compound Dictionary", () {
+    final data = [
+      0xa1, 0xa8, 0x00, 0xc0, 0x2f, 0x01, 0x10, //
+      0xc4, 0x44, 0x09, 0x00,
+    ];
+
+    expect(brotli.decodeToString(data), """alternate" type="appli""");
+  });
+
+  test("Compound Dictionary", () {
+    final data = [
+      0xa1, 0xa8, 0x00, 0xc0, 0x2f, 0x01, 0x10, //
+      0xc4, 0x44, 0x09, 0x00,
+    ];
+
+    final brotli =
+        BrotliCodec(compoundDictionary: ascii.encode("Kot lomom kolol slona!"));
+
+    expect(brotli.decodeToString(data), "Kot lomom kolol slona!");
+  });
 }
