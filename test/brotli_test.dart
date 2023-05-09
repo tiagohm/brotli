@@ -98,8 +98,7 @@ void main() {
       File('./test/assets/brotli.br').readAsBytesSync(),
     );
 
-    const loremIpsum =
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit,'
+    const loremIpsum = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit,'
         ' sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
         ' Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris'
         ' nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in'
@@ -125,8 +124,7 @@ void main() {
   });
 
   test('Alice: Sink', () async {
-    final output =
-        await brotli.decodeStream(File('./test/assets/alice.br').openRead());
+    final output = await brotli.decodeStream(File('./test/assets/alice.br').openRead());
 
     expect(output, hasLength(152088));
     expect(
@@ -164,9 +162,41 @@ void main() {
       0xc4, 0x44, 0x09, 0x00,
     ];
 
-    final brotli =
-        BrotliCodec(compoundDictionary: ascii.encode("Kot lomom kolol slona!"));
+    final brotli = BrotliCodec(compoundDictionary: ascii.encode("Kot lomom kolol slona!"));
 
     expect(brotli.decodeToString(data), "Kot lomom kolol slona!");
+  });
+
+  test("More tests", () {
+    // https://github.com/google/brotli/tree/master/java/org/brotli/integration
+    final files = [
+      "16k_minus_one",
+      "16k_plus_one",
+      "allbytevalues_16k",
+      "allbytevalues_twice",
+      "ascii",
+      "bible",
+      "bref65536",
+      "buffer_sized_chunks",
+      "E.coli",
+      "fox",
+      "monkey",
+      "random",
+      "ukkonooa",
+      "world192",
+      "x",
+      "x10y10",
+      "x64",
+      "xyzzy",
+    ];
+
+    for (final file in files) {
+      final output = brotli.decode(
+        File('./test/assets/$file.br').readAsBytesSync(),
+        // encoding: utf8,
+      );
+
+      expect(output, File('./test/assets/$file.txt').readAsBytesSync());
+    }
   });
 }
