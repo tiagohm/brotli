@@ -1,3 +1,8 @@
+## 0.6.0
+ - Dart SDK >= 2.14
+ - Compound Dictionary
+ - Some fixes
+
 ## 0.5.0
  - Null safety support
 
