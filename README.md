@@ -1,6 +1,7 @@
 # Brotli
 
 ![Pub Version](https://img.shields.io/pub/v/brotli?style=flat-square)
+[![CI](https://github.com/tiagohm/brotli/actions/workflows/ci.yml/badge.svg)](https://github.com/tiagohm/brotli/actions/workflows/ci.yml)
 
 Pure Dart Brotli decoder.
 
