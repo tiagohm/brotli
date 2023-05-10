@@ -1851,6 +1851,7 @@ void _doReadMoreInput(State s) {
 
   final readOffset = s.halfOffset << _logHalfSize;
   var bytesInBuffer = _capacity - readOffset;
+  // Move unused bytes to the head of the buffer.
   s.byteBuffer.copyWithin(0, readOffset, _capacity);
   s.halfOffset = 0;
 

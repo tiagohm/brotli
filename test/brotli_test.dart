@@ -199,4 +199,15 @@ void main() {
       expect(output, File('./test/assets/$file.txt').readAsBytesSync());
     }
   });
+
+  test("Quality", () {
+    for (var i = 0; i <= 11; i++) {
+      final output = brotli.decode(
+        File('./test/assets/mussum_ipsum.$i.br').readAsBytesSync(),
+        // encoding: utf8,
+      );
+
+      expect(output, File('./test/assets/mussum_ipsum.txt').readAsBytesSync());
+    }
+  });
 }
